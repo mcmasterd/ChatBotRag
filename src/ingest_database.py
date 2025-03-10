@@ -1,55 +1,118 @@
 import os
 import json
-from uuid import uuid4
-from langchain.docstore.document import Document
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_openai.embeddings import OpenAIEmbeddings
-from langchain_chroma import Chroma
 from dotenv import load_dotenv
+from openai import OpenAI
+import chromadb
+from chromadb.utils import embedding_functions
+from typing import Dict, List
 
+# Load environment variables
 load_dotenv()
 
-# Sử dụng đường dẫn tuyệt đối đến file JSON
-JSON_FILE_PATH = r"D:\Python\ChatBotICTU\data\3. Thong-tu-08-2021-tt-bgddt-quy-che-dao-tao-trinh-do-dai-hoc.json"
+# Initialize OpenAI
+client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-# Đường dẫn thư mục lưu trữ Chroma
-CHROMA_PATH = r"D:\Python\ChatBotICTU\chroma_db"
+# Initialize ChromaDB
+chroma_client = chromadb.PersistentClient(path="./chroma_db")
 
-# Khởi tạo mô hình embeddings với OpenAI
-embeddings_model = OpenAIEmbeddings(model="text-embedding-3-large")
-
-# Khởi tạo vector store với Chroma
-vector_store = Chroma(
-    collection_name="qa_collection",
-    embedding_function=embeddings_model,
-    persist_directory=CHROMA_PATH,
+# Initialize OpenAI embedding function
+openai_ef = embedding_functions.OpenAIEmbeddingFunction(
+    api_key=os.getenv('OPENAI_API_KEY'),
+    model_name="text-embedding-3-small"
 )
 
-# Đọc file JSON chứa các cặp Q&A
-with open(JSON_FILE_PATH, "r", encoding="utf-8") as f:
-    data = json.load(f)
+def process_and_upload_file(file_path: str, collection_name: str):
+    """Process a JSON file and upload embeddings to ChromaDB"""
+    try:
+        # Create or get collection
+        collection = chroma_client.get_or_create_collection(
+            name=collection_name,
+            embedding_function=openai_ef
+        )
+        
+        # Read the JSON file
+        with open(file_path, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+            qa_pairs = data.get('qa_pairs', [])
+            
+            # Prepare data for batch upload
+            ids = []
+            documents = []
+            metadatas = []
+            
+            for i, qa_pair in enumerate(qa_pairs):
+                # Create unique ID
+                unique_id = f"qa_{i}"
+                
+                # Combine question and answer for document
+                document = f"Câu hỏi: {qa_pair['question'].strip()} Trả lời: {qa_pair['answer'].strip()}"
+                
+                # Prepare metadata
+                metadata = {
+                    'question': qa_pair['question'],
+                    'answer': qa_pair['answer'],
+                    'category': qa_pair.get('category', ''),
+                    'subcategory': qa_pair.get('subcategory', ''),
+                    'source': file_path
+                }
+                
+                ids.append(unique_id)
+                documents.append(document)
+                metadatas.append(metadata)
+                
+                # Upload in batches of 100
+                if len(ids) >= 100:
+                    collection.add(
+                        ids=ids,
+                        documents=documents,
+                        metadatas=metadatas
+                    )
+                    print(f"Processed {i + 1}/{len(qa_pairs)} QA pairs")
+                    ids, documents, metadatas = [], [], []
+            
+            # Upload any remaining items
+            if ids:
+                collection.add(
+                    ids=ids,
+                    documents=documents,
+                    metadatas=metadatas
+                )
+                print(f"Processed all {len(qa_pairs)} QA pairs")
+        
+        print(f"Total items in collection: {collection.count()}")
+        
+    except Exception as e:
+        print(f"Detailed error: {str(e)}")
+        raise
 
-qa_pairs = data.get("qa_pairs", [])
+def search_qa_pairs(query: str, n_results: int = 3):
+    """Search for similar QA pairs"""
+    collection = chroma_client.get_collection(
+        name="scholarship-qa",
+        embedding_function=openai_ef
+    )
+    
+    results = collection.query(
+        query_texts=[query],
+        n_results=n_results
+    )
+    
+    return results
 
-# Chuyển mỗi cặp Q&A thành một đối tượng Document
-documents = [
-    Document(page_content=f"Question: {item.get('question', '').strip()}\nAnswer: {item.get('answer', '').strip()}")
-    for item in qa_pairs
-]
-
-# Chia nhỏ văn bản thành các đoạn nhỏ nếu cần
-text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=300,
-    chunk_overlap=100,
-    length_function=len,
-    is_separator_regex=False,
-)
-chunks = text_splitter.split_documents(documents)
-
-# Tạo UUID cho mỗi đoạn văn bản
-uuids = [str(uuid4()) for _ in range(len(chunks))]
-
-# Thêm các đoạn đã tạo embeddings vào vector store
-vector_store.add_documents(documents=chunks, ids=uuids)
-
-print("Quá trình ingest dữ liệu hoàn tất!")
+if __name__ == "__main__":
+    file_path = "data/NĐ 84_QĐ ve HB.json"
+    collection_name = "scholarship-qa"
+    
+    try:
+        # Process and upload data
+        process_and_upload_file(file_path, collection_name)
+        print("Processing completed successfully!")
+        
+        # Example search (uncomment to test)
+        # test_query = "Cho tôi biết về học bổng"
+        # results = search_qa_pairs(test_query)
+        # print("\nSearch Results:")
+        # print(results)
+        
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
