@@ -1,259 +1,220 @@
 import os
-import asyncio
 import chromadb
 import gradio as gr
-from openai import OpenAI, AsyncOpenAI
+from openai import OpenAI
 from dotenv import load_dotenv
-from typing import List, Dict, Optional, Set, Tuple
-from functools import lru_cache
 import time
 import re
+from typing import List, Dict, Set, Optional
 
-# Load environment variables
+# Initialize clients
 load_dotenv()
-
-# Initialize OpenAI
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-async_client = AsyncOpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-
-# Initialize ChromaDB
 chroma_client = chromadb.PersistentClient(path="./chroma_db")
-embedding_function = chromadb.utils.embedding_functions.OpenAIEmbeddingFunction(
-    api_key=os.getenv('OPENAI_API_KEY'),
-    model_name="text-embedding-3-small",
-    dimensions=1536
-)
 collection = chroma_client.get_collection(
     name="scholarship-qa",
-    embedding_function=embedding_function
+    embedding_function=chromadb.utils.embedding_functions.OpenAIEmbeddingFunction(
+        api_key=os.getenv('OPENAI_API_KEY'),
+        model_name="text-embedding-3-small"
+    )
 )
 
-# Replace the current cache implementation with this:
-_response_cache = {}  # Simple dictionary to store cached responses
+# Simple cache and category mapping
+_response_cache = {}
+CATEGORIES = {
+    "Scholarship": ["điều kiện", "yêu cầu", "tiêu chuẩn", "học bổng", "khuyến khích"],
+    "Decree": ["quy trình", "thủ tục", "các bước", "nghị định", "nộp hồ sơ"],
+    "Timeline": ["thời gian", "thời hạn", "khi nào", "deadline", "lịch trình"]
+}
+KEYWORD_TO_CATEGORY = {kw: cat for cat, keywords in CATEGORIES.items() for kw in keywords}
 
-@lru_cache(maxsize=100)
-def get_cached_response(query_key: str) -> str:
-    """Return cached response if available"""
-    return _response_cache.get(query_key)
-
-def normalize_query(query: str) -> str:
-    """Normalize query for better cache hits"""
-    return ' '.join(query.lower().split())
-
-# Category keyword mapping
-CATEGORY_KEYWORDS = {
-    "Scholarship": ["điều kiện", "yêu cầu", "tiêu chuẩn", "tiêu chí", "đủ điều kiện", "đáp ứng","học bổng"],
-    "Decree": ["quy trình", "thủ tục", "các bước", "quá trình", "thực hiện", "đăng ký", "nộp hồ sơ"]
+# Document source extraction patterns
+SOURCE_PATTERNS = {
+    r'(?:Nghị\s*định|NĐ)(?:\s*số\s*)?([\d\/\-]+[\w\-]*)': 'Nghị định',
+    r'(?:Quyết\s*định|QĐ)(?:\s*số\s*)?([\d\/\-]+[\w\-]*)': 'Quyết định',
+    r'(?:Thông\s*tư|TT)(?:\s*số\s*)?([\d\/\-]+[\w\-]*)': 'Thông tư',
+    r'(?:Văn\s*bản|Công\s*văn|CV)(?:\s*số\s*)?([\d\/\-]+[\w\-]*)': 'Văn bản'
 }
 
-# Inverse index for faster keyword lookup
-KEYWORD_TO_CATEGORY = {}
-for category, keywords in CATEGORY_KEYWORDS.items():
-    for keyword in keywords:
-        KEYWORD_TO_CATEGORY[keyword] = category
+def extract_sources(text: str) -> str:
+    """Extract document references from text"""
+    sources = []
+    for pattern, doc_type in SOURCE_PATTERNS.items():
+        for match in re.finditer(pattern, text, re.IGNORECASE):
+            doc_id = match.group(1).strip()
+            if doc_id:
+                sources.append(f"{doc_type} {doc_id}")
+    
+    # Add date if available
+    date_match = re.search(r'ngày\s*(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})', text, re.IGNORECASE)
+    if date_match and sources:
+        sources[-1] += f" ngày {date_match.group(1)}"
+    
+    return ", ".join(sources) if sources else ""
 
 def detect_categories(query: str) -> Set[str]:
-    """
-    Detect relevant categories from user query using keyword matching
-    Returns a set of detected categories
-    """
+    """Identify query categories for faster retrieval"""
     query_lower = query.lower()
-    detected_categories = set()
     
     # Direct keyword matching
-    for keyword, category in KEYWORD_TO_CATEGORY.items():
-        if keyword in query_lower:
-            detected_categories.add(category)
+    detected = {KEYWORD_TO_CATEGORY[kw] for kw in KEYWORD_TO_CATEGORY if kw in query_lower}
     
-    return detected_categories
+    # Add fallback category
+    if not detected and any(term in query_lower for term in ["học bổng", "scholarship"]):
+        detected.add("Scholarship")
+        
+    return detected
 
 def get_relevant_content(query: str, use_categories: bool = True) -> List[Dict]:
-    """Get relevant content with hybrid retrieval approach"""
-    start_time = time.time()
+    """Retrieve relevant content using hybrid search"""
+    start = time.time()
     
-    # Step 1: Detect categories from query (only if we want to use categories)
+    # Build category filter
     filter_dict = None
     if use_categories:
         categories = detect_categories(query)
-        print(f"Detected categories: {categories}")
+        print(f"Categories: {categories}")
         
-        # Step 2: Build filter based on detected categories
         if categories:
-            # Handle filter construction differently based on number of categories
             if len(categories) == 1:
-                # For a single category, no need for outer $or operator
-                category = next(iter(categories))
-                filter_dict = {"$or": [
-                    {"category": category},
-                    {"subcategory": category}
-                ]}
-            elif len(categories) > 1:
-                # For multiple categories, build a more complex filter
-                category_conditions = []
-                for category in categories:
-                    category_conditions.append({"category": category})
-                    category_conditions.append({"subcategory": category})
-                
-                filter_dict = {"$or": category_conditions}
+                cat = next(iter(categories))
+                filter_dict = {"$or": [{"category": cat}, {"subcategory": cat}]}
+            else:
+                filter_dict = {"$or": [{"category": cat} for cat in categories] + 
+                                      [{"subcategory": cat} for cat in categories]}
     
-    # Step 3: Query with category filter + embedding similarity
-    results = collection.query(
-        query_texts=[query],
-        n_results=3,  # Get more results when using filters for better coverage
-        where=filter_dict
-    )
+    # Query database
+    try:
+        results = collection.query(
+            query_texts=[query],
+            n_results=5 if len(query.split()) <= 3 else 3,  # More results for short queries
+            where=filter_dict
+        )
+        
+        # Process results
+        content = []
+        if results['metadatas'] and results['metadatas'][0]:
+            for metadata in results['metadatas'][0]:
+                content.append({k: metadata.get(k, '') for k in 
+                               ['question', 'answer', 'category', 'subcategory']})
+        
+        print(f"Retrieval: {time.time() - start:.2f}s, Results: {len(content)}")
+        return content
+    except Exception as e:
+        print(f"Retrieval error: {str(e)}")
+        return []
+
+def find_similar_query(query: str) -> Optional[str]:
+    """Find cached similar query"""
+    normalized = ' '.join(query.lower().split())
     
-    # Process results
-    relevant_content = []
-    for i in range(len(results['documents'][0])):
-        relevant_content.append({
-            'question': results['metadatas'][0][i].get('question', ''),
-            'answer': results['metadatas'][0][i].get('answer', ''),
-            'category': results['metadatas'][0][i].get('category', ''),
-            'subcategory': results['metadatas'][0][i].get('subcategory', '')
-        })
+    # Exact match
+    if normalized in _response_cache:
+        return normalized
     
-    print(f"Retrieval time: {time.time() - start_time:.4f}s, Results: {len(relevant_content)}")
-    return relevant_content
+    # Substring match with significant overlap
+    for cached in _response_cache:
+        if ((normalized in cached and len(normalized) > 10 and len(normalized) / len(cached) > 0.7) or
+            (cached in normalized and len(cached) > 10 and len(cached) / len(normalized) > 0.7)):
+            return cached
+            
+    return None
 
 def create_prompt(query: str, content: List[Dict]) -> str:
-    """Create an improved prompt with category context"""
-    # Extract categories for context
-    categories = ", ".join(set([
-        item.get('category', '') for item in content if item.get('category')
-    ] + [
-        item.get('subcategory', '') for item in content if item.get('subcategory')
-    ]))
-    
-    # Include full context with category information
+    """Create optimized prompt with source citations"""
     context_items = []
+    
     for item in content:
-        context_str = f"Q: {item['question']}\nA: {item['answer']}"
-        if item.get('category'):
-            context_str += f"\nDanh mục: {item['category']}"
-        if item.get('subcategory'):
-            context_str += f"\nDanh mục con: {item['subcategory']}"
-        context_items.append(context_str)
+        if not item.get('answer', '').strip():
+            continue
+            
+        context = f"Q: {item.get('question', '')}\nA: {item.get('answer', '')}"
+        sources = extract_sources(item.get('answer', ''))
+        if sources:
+            context += f"\nNguồn: {sources}"
+        context_items.append(context)
     
-    context = "\n\n".join(context_items)
+    if not context_items:
+        context_items = ["Không có thông tin phù hợp."]
     
-    prompt = f"""Trả lời câu hỏi dựa trên thông tin sau:
+    return """Trả lời câu hỏi dựa trên thông tin sau:
     
-    {context}
+    {0}
     
-    DANH MỤC LIÊN QUAN: {categories}
+    CÂU HỎI: {1}
     
-    CÂU HỎI: {query}
+    Hãy trả lời ngắn gọn, đầy đủ dựa trên thông tin đã cung cấp. Trích dẫn nguồn tài liệu 
+    (nghị định, quyết định, văn bản) nếu có. Nếu không đủ thông tin, hãy nói rõ.
     
-    TRẢ LỜI:"""
-    
-    return prompt
+    TRẢ LỜI:""".format("\n\n".join(context_items), query)
 
-async def get_llm_response_async(prompt: str) -> str:
-    """Asynchronous version of LLM response for better performance"""
-    response = await async_client.chat.completions.create(
-        model="gpt-3.5-turbo",  # Using a faster model for most queries
-        messages=[
-            {"role": "system", "content": "Bạn là trợ lý tư vấn học bổng. Trả lời ngắn gọn nhưng đầy đủ thông tin."},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.5,  # Lower temperature for more consistent responses
-        max_tokens=500,   # Reduce max tokens to speed up response
-        presence_penalty=0.3
-    )
-    return response.choices[0].message.content
-
-def get_llm_response(prompt: str) -> str:
-    """Get LLM response with optimized parameters"""
+def get_response(prompt: str) -> str:
+    """Get optimized LLM response"""
+    start = time.time()
+    
     response = client.chat.completions.create(
-        model="gpt-3.5-turbo",  # Using a faster model for most queries
+        model="gpt-3.5-turbo",
         messages=[
-            {"role": "system", "content": "Bạn là trợ lý tư vấn học bổng. Trả lời ngắn gọn nhưng đầy đủ thông tin."},
+            {"role": "system", "content": 
+             "Bạn là trợ lý tư vấn học bổng chuyên nghiệp. Trả lời ngắn gọn, chính xác và đầy đủ. "
+             "Trích dẫn nguồn tài liệu rõ ràng khi có thông tin. Tự tin với thông tin đã có."
+            },
             {"role": "user", "content": prompt}
         ],
-        temperature=0.5,  # Lower temperature for more consistent responses 
-        max_tokens=500,   # Reduce max tokens to speed up response
+        temperature=0.3,
+        max_tokens=400,
         presence_penalty=0.3
     )
+    
+    print(f"LLM time: {time.time() - start:.2f}s")
     return response.choices[0].message.content
 
-# Optional: fallback to more powerful model if needed
-def get_advanced_llm_response(prompt: str, query_complexity: float) -> str:
-    """Use more powerful model for complex queries"""
-    if query_complexity > 0.8:  # Threshold for complex queries
-        model = "gpt-4-0125-preview"
-    else:
-        model = "gpt-3.5-turbo"
-        
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": "Bạn là trợ lý tư vấn học bổng. Trả lời ngắn gọn nhưng đầy đủ thông tin."},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.5,
-        max_tokens=600,
-        presence_penalty=0.3
-    )
-    return response.choices[0].message.content
-
-def process_user_query(query: str) -> str:
-    """Process user query with hybrid search optimizations"""
+def process_query(query: str) -> str:
+    """Main query processing pipeline"""
     try:
-        start_time = time.time()
+        start = time.time()
         
-        # Check cache for similar queries
-        normalized_query = normalize_query(query)
-        cached_result = get_cached_response(normalized_query)
+        # Check cache
+        similar = find_similar_query(query)
+        if similar:
+            print(f"Cache hit: '{similar}'")
+            return _response_cache[similar]
         
-        if cached_result is not None:
-            print(f"Cache hit! Response time: {time.time() - start_time:.2f}s")
-            return cached_result
+        # Retrieve content with categories, fallback if needed
+        content = get_relevant_content(query, use_categories=True)
+        if not content:
+            content = get_relevant_content(query, use_categories=False)
         
-        # Get relevant content using hybrid search with categories
-        relevant_content = get_relevant_content(query, use_categories=True)
+        # Generate response
+        prompt = create_prompt(query, content)
+        response = get_response(prompt)
         
-        # If no results found, try without category filtering
-        if not relevant_content:
-            print("No results with category filter, falling back to embedding-only search")
-            relevant_content = get_relevant_content(query, use_categories=False)
+        # Update cache
+        _response_cache[' '.join(query.lower().split())] = response
         
-        # Create and get response
-        prompt = create_prompt(query, relevant_content)
-        response = get_llm_response(prompt)
-        
-        # Update cache properly
-        _response_cache[normalized_query] = response
-        # Clear the function cache
-        get_cached_response.cache_clear()
-        
-        print(f"Total response time: {time.time() - start_time:.2f}s")
+        print(f"Total time: {time.time() - start:.2f}s")
         return response
         
     except Exception as e:
+        import traceback
+        print(f"Error: {str(e)}")
+        print(traceback.format_exc())
         return f"Xin lỗi, đã có lỗi xảy ra: {str(e)}"
 
-# Gradio interface with streaming for better perceived performance
-def chatbot_interface(message, history):
-    return process_user_query(message)
-
-# Configure Gradio
+# Gradio interface
 demo = gr.ChatInterface(
-    fn=chatbot_interface,
+    fn=lambda message, history: process_query(message),
     title="Trợ lý tư vấn Học bổng 🎓",
     description="Hãy đặt câu hỏi về học bổng, mình sẽ trả lời đầy đủ và nhanh chóng!",
     theme=gr.themes.Soft(),
     examples=[
         "Điều kiện để nhận học bổng là gì?",
         "Quy trình xét học bổng như thế nào?",
-        "Thời gian xét học bổng là khi nào?"
+        "Thời gian xét học bổng là khi nào?",
+        "Điều kiện để được xét học bổng khuyến khích học tập?"
     ]
 )
 
 if __name__ == "__main__":
-    demo.queue()  # Removed unsupported parameter
-    demo.launch(
-        server_name="127.0.0.1",
-        server_port=7860,
-        share=True
-    )
+    demo.queue(max_size=10)
+    demo.launch(server_name="127.0.0.1", server_port=7860, share=True)
