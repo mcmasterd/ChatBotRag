@@ -1,154 +1,394 @@
 {
     "qa_pairs": [
         {
-            "question": "Quyết định ban hành quy định học bổng được ký vào ngày nào và bởi ai?",
-            "answer": "Quyết định ban hành quy định học bổng được ký vào ngày 20 tháng 01 năm 2021 bởi Hiệu trưởng Trường Đại học Công nghệ Thông tin và Truyền thông. Quyết định này mang số 54/QĐ-ĐHCNTT&TT và có hiệu lực kể từ ngày ký.",
+            "question": "Quy định về học bổng của Trường Đại học Công nghệ Thông tin và Truyền thông áp dụng cho đối tượng nào và phạm vi điều chỉnh là gì?",
+            "answer": "Quy định về học bổng của Trường Đại học Công nghệ Thông tin và Truyền thông (Trường ĐH CNTT&TT) điều chỉnh các vấn đề liên quan đến đối tượng, tiêu chuẩn, nguyên tắc, thủ tục, quy trình, mức xét, cấp và điều kiện được hưởng học bổng. Đối tượng được xét, cấp học bổng là sinh viên học đại học chính quy trong Trường Đại học CNTT&TT. Sinh viên hệ liên thông và văn bằng 2 không áp dụng quy định này. Mỗi sinh viên chỉ được nhận một loại học bổng của trường trong một học kỳ, năm học. Nếu sinh viên thuộc diện xét nhiều loại học bổng, sinh viên sẽ được nhận mức học bổng cao nhất.",
+            "category": "Scholarship",
+            "subcategory": "General"
+        },
+        {
+            "question": "Trường Đại học Công nghệ Thông tin và Truyền thông có những loại học bổng nào dành cho sinh viên?",
+            "answer": "Trường Đại học Công nghệ Thông tin và Truyền thông thực hiện các chính sách học bổng với mục đích khuyến khích những sinh viên có thành tích đặc biệt xuất sắc trong học tập và rèn luyện, đồng thời tạo điều kiện cho những sinh viên có hoàn cảnh khó khăn có cơ hội học tập tại trường. Học bổng bao gồm hai loại: 1) Học bổng khuyến khích học tập, là phần thưởng nhằm khuyến khích tinh thần học tập của sinh viên, tạo động lực học tập, tiếp tục phấn đấu trên hành trình vươn tới ước mơ nghề nghiệp trong tương lai, được xét trên hai hình thức: dựa trên kết quả học tập và rèn luyện trong học kỳ hoặc dành cho tân sinh viên trúng tuyển vào đại học dựa trên kết quả kỳ thi THPT Quốc gia theo tiêu chuẩn riêng do hội đồng tuyển sinh và hội đồng xét cấp học bổng quy định; 2) Học bổng tài trợ, là học bổng của các tổ chức, cá nhân trong và ngoài nước (gọi chung là nhà tài trợ) dành cho sinh viên thông qua các thỏa thuận với Trường ĐH CNTT&TT.",
+            "category": "Scholarship",
+            "subcategory": "General"
+        },
+        {
+            "question": "Quỹ học bổng của Trường Đại học Công nghệ Thông tin và Truyền thông được hình thành từ những nguồn nào?",
+            "answer": "Quỹ học bổng của Trường Đại học Công nghệ Thông tin và Truyền thông được hình thành từ nguồn học phí, các nguồn kinh phí tự có hợp pháp của trường và các nguồn tài trợ của các tổ chức, cá nhân.",
+            "category": "Scholarship",
+            "subcategory": "General"
+        },
+        {
+            "question": "Quy định về học bổng tại Trường Đại học Công nghệ Thông tin và Truyền thông nhằm mục đích gì?",
+            "answer": "Quy định nhằm khuyến khích sinh viên có thành tích học tập xuất sắc và rèn luyện tốt, đồng thời hỗ trợ sinh viên có hoàn cảnh khó khăn để tạo điều kiện học tập tại Trường Đại học Công nghệ Thông tin và Truyền thông (Điều 1, khoản 2).",
+            "category": "Scholarship",
+            "subcategory": "General"
+        },
+        {
+            "question": "Đối tượng nào được xét cấp học bổng tại Trường Đại học Công nghệ Thông tin và Truyền thông?",
+            "answer": "Sinh viên đại học chính quy đang theo học tại Trường Đại học Công nghệ Thông tin và Truyền thông là đối tượng được xét cấp học bổng. Sinh viên hệ liên thông hoặc văn bằng 2 không thuộc phạm vi áp dụng (Điều 1, khoản 1).",
+            "category": "Scholarship",
+            "subcategory": "General"
+        },
+        {
+            "question": "Sinh viên có được nhận nhiều học bổng từ Trường Đại học Công nghệ Thông tin và Truyền thông trong cùng một học kỳ hoặc năm học không?",
+            "answer": "Không, mỗi sinh viên chỉ được nhận một loại học bổng từ Trường Đại học Công nghệ Thông tin và Truyền thông trong một học kỳ hoặc năm học. Nếu đủ điều kiện cho nhiều loại học bổng, sinh viên sẽ nhận học bổng có giá trị cao nhất (Điều 1, khoản 1).",
+            "category": "Scholarship",
+            "subcategory": "General"
+        },
+        {
+            "question": "Quy định về học bổng của Trường Đại học Công nghệ Thông tin và Truyền thông áp dụng cho những năm học nào?",
+            "answer": "Quy định về học bổng của Trường Đại học Công nghệ Thông tin và Truyền thông áp dụng cho tất cả các năm học bắt đầu từ ngày có hiệu lực là 20 tháng 01 năm 2021. Quy định này có giá trị cho đến khi trường ban hành một quy định mới thay thế nó, theo nội dung tại Điều 2 của Quyết định số 51/QĐ-ĐHCNTT&TT.",
+            "category": "Scholarship",
+            "subcategory": "General"
+        },
+        {
+            "question": "Học bổng khuyến khích học tập của Trường Đại học Công nghệ Thông tin và Truyền thông được cấp vào thời gian nào?",
+            "answer": "Học bổng khuyến khích học tập (HB KKHT) của Trường Đại học Công nghệ Thông tin và Truyền thông được cấp theo từng học kỳ, mỗi học kỳ cấp trong 05 tháng và cấp 10 tháng trong năm học (Điều 5).",
+            "category": "Scholarship",
+            "subcategory": "Incentive Scholarship"
+        },
+        {
+            "question": "Cơ sở nào được sử dụng để xét và cấp học bổng khuyến khích học tập tại Trường Đại học Công nghệ Thông tin và Truyền thông?",
+            "answer": "Cơ sở để xét học bổng khuyến khích học tập (HB KKHT) tại Trường Đại học Công nghệ Thông tin và Truyền thông là điểm trung bình chung học tập và điểm rèn luyện của học kỳ (Điều 5).",
+            "category": "Scholarship",
+            "subcategory": "Incentive Scholarship"
+        },
+        {
+            "question": "Đối tượng nào được xét học bổng khuyến khích học tập tại Trường Đại học Công nghệ Thông tin và Truyền thông?",
+            "answer": "Sinh viên đại học chính quy đang học trong thời gian đào tạo chuẩn của Trường Đại học Công nghệ Thông tin và Truyền thông, có thành tích cao trong học tập và rèn luyện theo các tiêu chuẩn quy định, sẽ được xem xét để cấp học bổng khuyến khích học tập (HB KKHT) trong phạm vi quỹ HB KKHT của trường, theo Điều 6 của Quyết định số 54/QĐ-ĐHCNTT&TT ban hành ngày 20 tháng 04 năm 2021.",
+            "category": "Scholarship",
+            "subcategory": "Incentive Scholarship"
+        },
+        {
+            "question": "Số tín chỉ tối thiểu để được xét học bổng khuyến khích học tập tại Trường Đại học Công nghệ Thông tin và Truyền thông là bao nhiêu?",
+            "answer": "Để được xét học bổng khuyến khích học tập (HB KKHT) tại Trường Đại học Công nghệ Thông tin và Truyền thông, sinh viên đại học chính quy phải đăng ký học và thi lần đầu ít nhất 15 tín chỉ trong học kỳ xét học bổng, hoặc bằng số tín chỉ tối thiểu theo chương trình đào tạo nếu số tín chỉ yêu cầu dưới 15, theo Điều 6, khoản 1 của Quyết định số 54/QĐ-ĐHCNTT&TT ban hành ngày 20 tháng 04 năm 2021.",
+            "category": "Scholarship",
+            "subcategory": "Incentive Scholarship"
+        },
+        {
+            "question": "Sinh viên học vượt có được tính tín chỉ để xét học bổng khuyến khích học tập tại Trường Đại học Công nghệ Thông tin và Truyền thông không?",
+            "answer": "Có, sinh viên đại học chính quy tại Trường Đại học Công nghệ Thông tin và Truyền thông đăng ký học vượt sẽ được tính các học phần học vượt để tham gia xét cấp học bổng khuyến khích học tập (HB KKHT), theo Điều 6, khoản 2 của Quyết định số 54/QĐ-ĐHCNTT&TT ban hành ngày 20 tháng 04 năm 2021.",
+            "category": "Scholarship",
+            "subcategory": "Incentive Scholarship"
+        },
+        {
+            "question": "Điểm rèn luyện tối thiểu để được xét học bổng khuyến khích học tập tại Trường Đại học Công nghệ Thông tin và Truyền thông là bao nhiêu?",
+            "answer": "Sinh viên đại học chính quy tại Trường Đại học Công nghệ Thông tin và Truyền thông cần đạt điểm rèn luyện từ loại Khá trở lên, được xác định theo 'Quy định đánh giá điểm rèn luyện' hiện hành, để được xét cấp học bổng khuyến khích học tập (HB KKHT), theo Điều 6, khoản 3 của Quyết định số 54/QĐ-ĐHCNTT&TT ban hành ngày 20 tháng 04 năm 2021.",
+            "category": "Scholarship",
+            "subcategory": "Incentive Scholarship"
+        },
+        {
+            "question": "Sinh viên vi phạm kỷ luật có được xét học bổng khuyến khích học tập tại Trường Đại học Công nghệ Thông tin và Truyền thông không?",
+            "answer": "Không, sinh viên đại học chính quy tại Trường Đại học Công nghệ Thông tin và Truyền thông vi phạm kỷ luật từ mức khiển trách trở lên trong học kỳ xét học bổng sẽ không được xét cấp học bổng khuyến khích học tập (HB KKHT), theo Điều 6, khoản 4 của Quyết định số 54/QĐ-ĐHCNTT&TT ban hành ngày 20 tháng 04 năm 2021.",
+            "category": "Scholarship",
+            "subcategory": "Incentive Scholarship"
+        },
+        {
+            "question": "Sinh viên thuộc diện chính sách đặc biệt có được xét học bổng khuyến khích học tập tại Trường Đại học Công nghệ Thông tin và Truyền thông không?",
+            "answer": "Có, sinh viên đại học chính quy tại Trường Đại học Công nghệ Thông tin và Truyền thông thuộc diện hưởng học bổng chính sách, trợ cấp xã hội hoặc chính sách ưu đãi theo quy định hiện hành, nếu đạt kết quả học tập và rèn luyện đáp ứng tiêu chuẩn xét cấp học bổng theo Quyết định số 54/QĐ-ĐHCNTT&TT, sẽ được xét và cấp học bổng khuyến khích học tập (HB KKHT) như những sinh viên khác, theo Điều 6, khoản 5 của quyết định này ban hành ngày 20 tháng 04 năm 2021.",
+            "category": "Scholarship",
+            "subcategory": "Incentive Scholarship"
+        },
+        {
+            "question": "Sinh viên được hưởng nhiều loại học bổng cùng lúc tại Trường Đại học Công nghệ Thông tin và Truyền thông thì xử lý thế nào?",
+            "answer": "Sinh viên đại học chính quy tại Trường Đại học Công nghệ Thông tin và Truyền thông thuộc diện được cấp học bổng khuyến khích học tập (HB KKHT) theo Quyết định số 54/QĐ-ĐHCNTT&TT, nếu cùng một lúc được hưởng nhiều chính sách học bổng hoặc hỗ trợ có cùng tính chất, thì chỉ được hưởng một mức học bổng cao nhất, theo Điều 6, khoản 6 của quyết định này ban hành ngày 20 tháng 04 năm 2021.",
+            "category": "Scholarship",
+            "subcategory": "Incentive Scholarship"
+        },
+        {
+            "question": "Sinh viên cần đáp ứng những tiêu chuẩn nào để được xét học bổng khuyến khích học tập tại Trường Đại học Công nghệ Thông tin và Truyền thông?",
+            "answer": "Sinh viên đại học chính quy đang học trong thời gian đào tạo chuẩn của Trường Đại học Công nghệ Thông tin và Truyền thông cần đáp ứng các tiêu chuẩn sau để được xét cấp học bổng khuyến khích học tập (HB KKHT) trong phạm vi quỹ HB KKHT của trường, theo Điều 6 của Quyết định số 54/QĐ-ĐHCNTT&TT ban hành ngày 20 tháng 04 năm 2021: 1) Đăng ký học và thi lần đầu ít nhất 15 tín chỉ trong học kỳ, hoặc bằng số tín chỉ tối thiểu theo chương trình đào tạo nếu dưới 15 tín chỉ; 2) Được tính các học phần học vượt nếu đăng ký học vượt; 3) Đạt điểm rèn luyện từ loại Khá trở lên theo 'Quy định đánh giá điểm rèn luyện' hiện hành; 4) Không vi phạm kỷ luật từ mức khiển trách trở lên trong học kỳ xét học bổng; 5) Sinh viên thuộc diện chính sách đặc biệt (học bổng chính sách, trợ cấp xã hội, ưu đãi) vẫn được xét HB KKHT như sinh viên khác nếu đạt tiêu chuẩn; 6) Nếu đủ điều kiện nhận nhiều loại học bổng cùng tính chất, chỉ được hưởng mức cao nhất.",
+            "category": "Scholarship",
+            "subcategory": "Incentive Scholarship"
+        },
+        {
+            "question": "Nguyên tắc nào được áp dụng khi xét học bổng khuyến khích học tập tại Trường Đại học Công nghệ Thông tin và Truyền thông nếu điểm trung bình chung bằng nhau?",
+            "answer": "Nguyên tắc xét học bổng khuyến khích học tập (HB KKHT) tại Trường Đại học Công nghệ Thông tin và Truyền thông trong trường hợp điểm trung bình chung (thang điểm 4) bằng nhau sẽ dựa trên các tiêu chí phụ với thứ tự ưu tiên lần lượt sau: a) Sinh viên có điểm trung bình chung theo thang điểm 10 cao hơn; b) Sinh viên có điểm rèn luyện của học kỳ xét học bổng cao hơn; c) Sinh viên có điểm hoạt động ngoại khóa của học kỳ xét học bổng cao hơn; d) Trường hợp các thứ tự ưu tiên đều bằng nhau, Hiệu trưởng sẽ căn cứ thực tế để xác định số lượng được cấp HB KKHT (Điều 7, khoản 2).",
+            "category": "Scholarship",
+            "subcategory": "Incentive Scholarship"
+        },
+        {
+            "question": "Sinh viên cần đạt điều kiện gì về điểm học tập và rèn luyện để nhận học bổng khuyến khích học tập loại Xuất sắc, Giỏi, và Khá tại Trường Đại học Công nghệ Thông tin và Truyền thông?",
+            "answer": "Sinh viên tại Trường Đại học Công nghệ Thông tin và Truyền thông cần đạt các điều kiện sau để nhận học bổng khuyến khích học tập (HB KKHT): 1) Loại Xuất sắc: Điểm trung bình chung học kỳ từ 3.60 đến 4.00 (thang điểm 4) và điểm rèn luyện đạt loại Xuất sắc; 2) Loại Giỏi: Điểm trung bình chung học kỳ từ 3.60 đến 4.00 và điểm rèn luyện đạt loại Tốt, hoặc điểm trung bình chung học kỳ từ 3.20 đến 3.59 và điểm rèn luyện đạt loại Xuất sắc hoặc Tốt; 3) Loại Khá: Điểm trung bình chung học kỳ từ 3.60 đến 4.00 và điểm rèn luyện đạt loại Khá, hoặc điểm trung bình chung học kỳ từ 3.20 đến 3.59 và điểm rèn luyện đạt loại Khá, hoặc điểm trung bình chung học kỳ từ 2.5 đến 3.19 và điểm rèn luyện đạt loại Khá (Điều 7, khoản 1).",
+            "category": "Scholarship",
+            "subcategory": "Incentive Scholarship"
+        },
+        {
+            "question": "Mức học bổng khuyến khích học tập tại Trường Đại học Công nghệ Thông tin và Truyền thông được quy định như thế nào?",
+            "answer": "Mức học bổng khuyến khích học tập (HB KKHT) tại Trường Đại học Công nghệ Thông tin và Truyền thông được quy định như sau: 1) Mức HB KKHT loại Khá bằng mức thu học phí theo quy định của năm học đó tính theo niên chế/tháng; 2) Mức HB KKHT loại Giỏi bằng mức HB KKHT loại Khá cộng thêm 100.000 đồng; 3) Mức HB KKHT loại Xuất sắc bằng mức HB KKHT loại Giỏi cộng thêm 100.000 đồng (Điều 8).",
+            "category": "Scholarship",
+            "subcategory": "Incentive Scholarship"
+        },
+        {
+            "question": "Nguồn kinh phí cấp học bổng khuyến khích học tập tại Trường Đại học Công nghệ Thông tin và Truyền thông đến từ đâu?",
+            "answer": "Quỹ học bổng khuyến khích học tập (HB KKHT) của Trường Đại học Công nghệ Thông tin và Truyền thông được trích từ nguồn học phí của sinh viên, các nguồn kinh phí hợp pháp của trường, và các khoản tài trợ từ tổ chức, cá nhân trong và ngoài nước, theo quy định tại Điều 4 và Điều 9 của Quyết định số 51/QĐ-ĐHCNTT&TT.",
+            "category": "Scholarship",
+            "subcategory": "Incentive Scholarship"
+        },
+        {
+            "question": "Thủ tục xét và cấp học bổng khuyến khích học tập tại Trường Đại học Công nghệ Thông tin và Truyền thông được thực hiện như thế nào?",
+            "answer": "Thủ tục xét và cấp học bổng khuyến khích học tập (HB KKHT) tại Trường Đại học Công nghệ Thông tin và Truyền thông được thực hiện như sau: 1) Nhà trường phân bổ số suất HB KKHT cho từng khóa học, ngành học; 2) Căn cứ vào kết quả học tập và rèn luyện của sinh viên ở học kỳ đó, Nhà trường tiến hành xét, cấp HB KKHT cho sinh viên theo thứ tự từ loại Xuất sắc trở xuống; 3) Căn cứ theo số tiền HB KKHT của trường phân bổ cho các ngành, Phòng Công tác Học sinh Sinh viên (CTHSSV) dựa theo các tiêu chuẩn và nguyên tắc để xét và lập danh sách đề nghị cấp HB KKHT cho sinh viên theo ngành, tổng hợp trình Hội đồng xét cấp học bổng; 4) Hội đồng xét HB KKHT nhà trường căn cứ vào các tiêu chuẩn và danh sách đề nghị của Phòng CTHSSV, sau khi gửi các khoa rà soát, thực hiện duyệt lần cuối và ra quyết định cấp HB KKHT cho sinh viên (Điều 11).",
+            "category": "Scholarship",
+            "subcategory": "Incentive Scholarship"
+        },
+        {
+            "question": "Hội đồng xét, cấp học bổng khuyến khích học tập tại Trường Đại học Công nghệ Thông tin và Truyền thông được tổ chức ra sao và gồm những ai?",
+            "answer": "Hội đồng xét, cấp học bổng khuyến khích học tập (HB KKHT) tại Trường Đại học Công nghệ Thông tin và Truyền thông là bộ phận tham mưu cho Hiệu trưởng trong việc xét, cấp HB KKHT cho sinh viên căn cứ theo các quy định hiện hành và chịu sự chỉ đạo trực tiếp của Hiệu trưởng. Hội đồng họp mỗi học kỳ để thực hiện nhiệm vụ. Thành phần Hội đồng gồm: a) Chủ tịch Hội đồng là Hiệu trưởng hoặc Phó Hiệu trưởng được Hiệu trưởng ủy quyền; b) Thường trực Hội đồng là Trưởng phòng Phòng Công tác Học sinh Sinh viên; c) Ủy viên là đại diện lãnh đạo các đơn vị: Phòng Đào tạo, Phòng Kế hoạch Tài chính, Phòng Khảo thí và Đảm bảo Chất lượng Giáo dục, Phòng Hành chính - Tổ chức, các Khoa, chuyên viên Phòng Công tác HSSV, chuyên viên phụ trách Công tác sinh viên các Khoa (Điều 12).",
+            "category": "Scholarship",
+            "subcategory": "Incentive Scholarship"
+        },
+        {
+            "question": "Quy trình xét và cấp học bổng khuyến khích học tập tại Trường Đại học Công nghệ Thông tin và Truyền thông gồm những bước nào?",
+            "answer": "Quy trình xét và cấp học bổng khuyến khích học tập (HB KKHT) tại Trường Đại học Công nghệ Thông tin và Truyền thông gồm 5 bước: 1) Đầu mỗi học kỳ, Phòng Kế hoạch - Tài chính trình Lãnh đạo trường phê duyệt quỹ học bổng khuyến khích học tập và phân bổ kinh phí cấp HB KKHT theo ngành học, khóa đào tạo; sau đó, khi kết thúc học kỳ, Phòng Đào tạo cung cấp bảng điểm lần thứ nhất trong học kỳ chính gửi Phòng Công tác HSSV để tổng hợp. 2) Căn cứ vào tổng kinh phí được phân bổ theo từng ngành học, khóa đào tạo, kết quả học tập và rèn luyện của sinh viên, Phòng Công tác HSSV đề xuất phương án và lập danh sách sinh viên được xét, cấp HB KKHT. 3) Hội đồng xét, cấp HB KKHT tổ chức họp để xem xét phương án do Phòng Công tác HSSV đề xuất, lấy ý kiến các thành viên và thống nhất phương án phù hợp. 4) Sau khi Hội đồng chốt phương án cấp HB KKHT, Phòng Công tác HSSV gửi danh sách sinh viên được cấp HB KKHT đến các Khoa để thông báo cho sinh viên, và mọi ý kiến thắc mắc về danh sách phải được phản ánh về Phòng Công tác HSSV trong 15 ngày kể từ ngày thông báo. 5) Phòng Công tác HSSV trình Hiệu trưởng duyệt Quyết định và danh sách sinh viên được cấp HB KKHT; sau khi phê duyệt, Quyết định được gửi tới các Khoa và Phòng Kế hoạch - Tài chính để thực hiện, Phòng Kế hoạch - Tài chính chi trả học bổng trực tiếp vào tài khoản ATM của sinh viên theo quy định tại Điều 13 của Quyết định số 51/QĐ-ĐHCNTT&TT.",
+            "category": "Scholarship",
+            "subcategory": "Incentive Scholarship"
+        },
+        {
+            "question": "Sinh viên học vượt có được tính thêm tín chỉ để xét HB KKHT không?",
+            "answer": "Có, sinh viên đăng ký học vượt sẽ được tính các học phần học vượt vào tổng số tín chỉ để xét cấp HB KKHT, miễn là các học phần đó được học và thi lần đầu trong học kỳ xét học bổng (Điều 6, khoản 2).",
+            "category": "Scholarship",
+            "subcategory": "Incentive Scholarship"
+        },
+        {
+            "question": "Sinh viên nghỉ học tạm thời có được xét HB KKHT không?",
+            "answer": "Không, sinh viên nghỉ học tạm thời hoặc bị đình chỉ trong học kỳ xét sẽ không được xét HB KKHT (Điều 6, khoản 4).",
+            "category": "Scholarship",
+            "subcategory": "Incentive Scholarship"
+        },
+        {
+            "question": "Những trường hợp nào khiến sinh viên không được xét HB KKHT?",
+            "answer": "Sinh viên không được xét HB KKHT nếu: 1) Nghỉ học tạm thời trong học kỳ xét học bổng; 2) Bị đình chỉ học tập trong học kỳ xét học bổng; 3) Vi phạm kỷ luật từ mức khiển trách trở lên (kể cả khiển trách, cảnh cáo, đình chỉ); 4) Không đạt số tín chỉ tối thiểu (15 tín chỉ hoặc bằng số tín chỉ bắt buộc nếu dưới 15); 5) Điểm rèn luyện dưới mức Khá (< 70 điểm) (Điều 6).",
+            "category": "Scholarship",
+            "subcategory": "Incentive Scholarship"
+        },
+        {
+            "question": "Thời gian công khai danh sách học bổng kéo dài bao lâu?",
+            "answer": "Danh sách sinh viên nhận học bổng được công khai trong 15 ngày để nhận phản hồi từ sinh viên và các bên liên quan (Điều 13, khoản 4).",
+            "category": "Scholarship",
+            "subcategory": "Incentive Scholarship"
+        },
+        {
+            "question": "Học bổng HB KKHT được chi trả bằng hình thức nào?",
+            "answer": "Học bổng HB KKHT được chuyển trực tiếp vào tài khoản ATM của sinh viên sau khi danh sách được Hiệu trưởng phê duyệt (Điều 13, khoản 5).",
+            "category": "Scholarship",
+            "subcategory": "Incentive Scholarship"
+        },
+        {
+            "question": "Sinh viên có quyền khiếu nại về kết quả xét học bổng không?",
+            "answer": "Có, sinh viên có quyền gửi ý kiến phản hồi hoặc khiếu nại trong thời gian 15 ngày công khai danh sách (Điều 13, khoản 4).",
+            "category": "Scholarship",
+            "subcategory": "Incentive Scholarship"
+        },
+        {
+            "question": "Nguyên tắc xét và cấp học bổng khuyến khích học tập dành cho tân sinh viên tại Trường Đại học Công nghệ Thông tin và Truyền thông là gì?",
+            "answer": "Nguyên tắc xét và cấp học bổng tại Trường Đại học Công nghệ Thông tin và Truyền thông bao gồm: 1) Học bổng khuyến khích học tập dành cho tân sinh viên được xét theo các tiêu chí, tiêu chuẩn được quy định tại Điều 16 và Điều 17 của Quy định này; 2) Sinh viên được cấp học bổng khuyến khích học tập dành cho tân sinh viên có thể tiếp tục được cấp học bổng trong các năm tiếp theo nếu đạt điều kiện duy trì học bổng theo quy định tại Điều 17; 3) Sinh viên nhận học bổng khuyến khích học tập dành cho tân sinh viên chỉ được nhận một loại học bổng của trường trong một học kỳ, năm học; 4) Sinh viên thuộc đối tượng chế độ chính sách đã được miễn, giảm học phí mà thuộc diện xét học bổng khuyến khích học tập dành cho tân sinh viên thì sẽ chỉ được hưởng một chế độ ưu đãi cao nhất (Điều 14).",
+            "category": "Scholarship",
+            "subcategory": "Sponsored and Freshmen Scholarship"
+        },
+        {
+            "question": "Mức học bổng khuyến khích học tập dành cho tân sinh viên và học bổng tài trợ tại Trường Đại học Công nghệ Thông tin và Truyền thông được quy định như thế nào?",
+            "answer": "Mức học bổng tại Trường Đại học Công nghệ Thông tin và Truyền thông được quy định như sau: 1) Mức học bổng khuyến khích học tập dành cho tân sinh viên bằng mức miễn học phí theo số tín chỉ sinh viên đăng ký hàng kỳ, được ban hành hàng năm theo quyết định của Hiệu trưởng Trường ĐH CNTT&TT; 2) Mức học bổng tài trợ được quy định trong thông báo tài trợ hoặc trong văn bản thỏa thuận về việc cấp học bổng giữa Trường ĐH CNTT&TT với các nhà tài trợ (Điều 15).",
+            "category": "Scholarship",
+            "subcategory": "Sponsored and Freshmen Scholarship"
+        },
+        {
+            "question": "Tiêu chuẩn và nguyên tắc xét cấp học bổng khuyến khích học tập dành cho tân sinh viên tại Trường Đại học Công nghệ Thông tin và Truyền thông là gì?",
+            "answer": "Tiêu chuẩn và nguyên tắc xét cấp học bổng khuyến khích học tập dành cho tân sinh viên tại Trường Đại học Công nghệ Thông tin và Truyền thông bao gồm: 1) Tiêu chuẩn: Sinh viên được cấp học bổng khuyến khích học tập dành cho tân sinh viên dựa trên kết quả kỳ thi THPT Quốc gia hàng năm, nhà trường sẽ đưa ra mức điểm phù hợp để đạt học bổng theo thông báo tuyển sinh; 2) Nguyên tắc: a) Căn cứ vào kết quả tuyển sinh đại học; b) Đối với tân sinh viên học các ngành chất lượng cao, trọng điểm, ngành liên kết đào tạo quốc tế, nhà trường xét cấp học bổng khuyến khích học tập theo hệ số 1 (hệ số đóng học phí); c) Nhà trường thực hiện xét và công bố danh sách sinh viên được cấp học bổng khi nhận được Quyết định trúng tuyển; d) Học bổng được cấp theo học kỳ, năm học và được chi trả theo học kỳ (Điều 16).",
+            "category": "Scholarship",
+            "subcategory": "Sponsored and Freshmen Scholarship"
+        },
+        {
+            "question": "Điều kiện và nguyên tắc để duy trì học bổng khuyến khích học tập dành cho tân sinh viên tại Trường Đại học Công nghệ Thông tin và Truyền thông là gì?",
+            "answer": "Điều kiện và nguyên tắc để duy trì học bổng khuyến khích học tập dành cho tân sinh viên tại Trường Đại học Công nghệ Thông tin và Truyền thông bao gồm: 1) Điều kiện tiêu chuẩn: Sinh viên đạt đồng thời các điều kiện sau sẽ được xét duy trì học bổng: a) Tích lũy đủ số tín chỉ theo quy định chương trình đào tạo học kỳ, năm học; b) Không có học phần điểm F tại thời điểm xét cấp học bổng; c) Điểm học tập trung bình tích lũy ≥ 3.2; d) Điểm rèn luyện trung bình các học kỳ đã học ≥ 90; e) Đối với sinh viên nhận học bổng toàn khoa học, sinh viên phải liên tục duy trì được các điều kiện trên trong toàn bộ các học kỳ tiếp theo sau năm học thứ nhất, nếu gián đoạn sẽ không tiếp tục được hưởng học bổng; 2) Nguyên tắc: a) Hàng năm, nhà trường xét và công bố danh sách sinh viên được duy trì học bổng; b) Học bổng được cấp theo học kỳ, năm học và được chi trả theo học kỳ (Điều 17).",
+            "category": "Scholarship",
+            "subcategory": "Sponsored and Freshmen Scholarship"
+        },
+        {
+            "question": "Nguyên tắc xét cấp học bổng tài trợ tại Trường Đại học Công nghệ Thông tin và Truyền thông được thực hiện như thế nào?",
+            "answer": "Nguyên tắc xét cấp học bổng tài trợ tại Trường Đại học Công nghệ Thông tin và Truyền thông bao gồm: 1) Căn cứ vào thỏa thuận về việc cấp học bổng với các nhà tài trợ hoặc thông báo tài trợ; 2) Nhà trường phối hợp với nhà tài trợ tổ chức xét và công bố danh sách sinh viên được cấp học bổng (Điều 18).",
+            "category": "Scholarship",
+            "subcategory": "Sponsored and Freshmen Scholarship"
+        },
+        {
+            "question": "Hồ sơ đăng ký xét cấp học bổng khuyến khích học tập dành cho tân sinh viên và học bổng tài trợ tại Trường Đại học Công nghệ Thông tin và Truyền thông gồm những gì?",
+            "answer": "Hồ sơ đăng ký xét cấp học bổng tại Trường Đại học Công nghệ Thông tin và Truyền thông được quy định như sau: 1) Học bổng khuyến khích học tập dành cho tân sinh viên: a) Đơn đăng ký xét cấp học bổng; b) Đối với sinh viên năm học thứ nhất, căn cứ theo thông báo tuyển sinh hàng năm và quyết định trúng tuyển của sinh viên; c) Bảng điểm học tập và rèn luyện theo học kỳ (đối với sinh viên từ năm thứ 2); 2) Học bổng tài trợ: a) Đơn đăng ký xét cấp học bổng tài trợ; b) Các giấy tờ khác theo yêu cầu cụ thể của từng loại học bổng (Điều 19).",
+            "category": "Scholarship",
+            "subcategory": "Sponsored and Freshmen Scholarship"
+        },
+        {
+            "question": "Hội đồng xét học bổng tài trợ và học bổng khuyến khích học tập dành cho tân sinh viên tại Trường Đại học Công nghệ Thông tin và Truyền thông được thành lập và gồm những ai?",
+            "answer": "Hội đồng xét học bổng tài trợ và học bổng khuyến khích học tập dành cho tân sinh viên tại Trường Đại học Công nghệ Thông tin và Truyền thông được tổ chức như sau: 1) Hội đồng xét học bổng của trường được thành lập theo quyết định của Hiệu trưởng Trường Đại học CNTT&TT, có trách nhiệm giúp Hiệu trưởng trong việc xét cấp học bổng trên cơ sở các quy định hiện hành; 2) Thành viên Hội đồng gồm: a) Hội đồng xét học bổng tài trợ và học bổng khuyến khích học tập dành cho tân sinh viên bao gồm: Chủ tịch Hội đồng là thành viên Ban Giám hiệu, các thành viên là đại diện các đơn vị: Phòng Công tác Sinh viên, Phòng Đào tạo, Phòng Tuyển sinh, Phòng Tài chính - Kế toán, Đoàn Thanh niên, Hội Sinh viên Trường và đại diện các đơn vị có liên quan; b) Hội đồng xét học bổng tài trợ: Căn cứ vào từng học bổng cụ thể, nhà trường sẽ phối hợp với nhà tài trợ để thành lập Hội đồng (Điều 20).",
+            "category": "Scholarship",
+            "subcategory": "Sponsored and Freshmen Scholarship"
+        },
+        {
+            "question": "Học bổng tài trợ (HB tài trợ) tại Trường Đại học Công nghệ Thông tin và Truyền thông là gì và được cung cấp bởi ai?",
+            "answer": "Học bổng tài trợ (HB tài trợ) tại Trường Đại học Công nghệ Thông tin và Truyền thông là loại học bổng được cấp nhằm hỗ trợ sinh viên, do các tổ chức hoặc cá nhân trong và ngoài nước tài trợ thông qua các thỏa thuận hợp tác với trường. Đây là một trong hai loại học bổng chính của trường, bên cạnh học bổng khuyến khích học tập, theo quy định tại Điều 3, khoản 2 của Quyết định số 51/QĐ-ĐHCNTT&TT.",
+            "category": "Scholarship",
+            "subcategory": "Sponsored and Freshmen Scholarship"
+        },
+        {
+            "question": "Học bổng dành cho tân sinh viên được cấp dựa trên cơ sở nào?",
+            "answer": "Học bổng dành cho tân sinh viên được cấp dựa trên kết quả điểm thi THPT Quốc gia của năm tuyển sinh (Điều 16, khoản 1).",
+            "category": "Scholarship",
+            "subcategory": "Sponsored and Freshmen Scholarship"
+        },
+        {
+            "question": "Sinh viên có thể kết hợp học bổng cho tân sinh viên với các ưu đãi khác không?",
+            "answer": "Không, sinh viên chỉ được hưởng một chế độ ưu đãi cao nhất nếu thuộc nhiều diện ưu đãi khác nhau (ví dụ: học bổng tân sinh viên, học bổng chính sách, hoặc miễn giảm học phí) (Điều 14, khoản 3).",
+            "category": "Scholarship",
+            "subcategory": "Sponsored and Freshmen Scholarship"
+        },
+        {
+            "question": "Ai chịu trách nhiệm tổ chức thực hiện quy định về học bổng tại Trường Đại học Công nghệ Thông tin và Truyền thông?",
+            "answer": "Việc tổ chức thực hiện quy định về học bổng tại Trường Đại học Công nghệ Thông tin và Truyền thông được phân công như sau: 1) Phòng Công tác Học sinh Sinh viên chủ trì và chịu trách nhiệm thực hiện việc xét học bổng cho sinh viên; 2) Các Phòng chức năng liên quan và Khoa chuyên môn phối hợp thực hiện công tác xét học bổng cho sinh viên (Điều 21).",
+            "category": "Scholarship",
+            "subcategory": "Implementation"
+        },
+        {
+            "question": "Quy định về học bổng của Trường Đại học Công nghệ Thông tin và Truyền thông có hiệu lực từ khi nào và thay thế cho văn bản nào?",
+            "answer": "Quy định về học bổng của Trường Đại học Công nghệ Thông tin và Truyền thông có hiệu lực kể từ ngày ký, cụ thể là ngày 20 tháng 01 năm 2021, và thay thế cho Quyết định số 1253/QĐ-ĐHCNTT&TT ngày 31/12/2019 về Quy định học bổng khuyến khích học tập đối với sinh viên đại học chính quy của Trường Đại học Công nghệ Thông tin và Truyền thông. Khi văn bản quy phạm pháp luật có liên quan được sửa đổi, bổ sung hoặc thay thế bằng văn bản mới, nhà trường sẽ điều chỉnh, bổ sung Quy định này cho phù hợp (Điều 2).",
+            "category": "Scholarship",
+            "subcategory": "Implementation"
+        },
+        {
+            "question": "Sinh viên tại Trường Đại học Công nghệ Thông tin và Truyền thông có thể phản ánh thắc mắc về danh sách học bổng khuyến khích học tập trong thời gian bao lâu và theo cách nào?",
+            "answer": "Sinh viên tại Trường Đại học Công nghệ Thông tin và Truyền thông có thể phản ánh thắc mắc về danh sách học bổng khuyến khích học tập (HB KKHT) trong thời gian 15 ngày kể từ khi nhà trường thông báo. Sau khi Hội đồng xét, cấp HB KKHT chốt phương án cấp học bổng, Phòng Công tác Học sinh Sinh viên (CTHSSV) gửi danh sách sinh viên được cấp HB KKHT đến các Khoa để thông báo cho sinh viên được biết. Mọi ý kiến thắc mắc về danh sách được cấp HB KKHT cần được phản ánh kịp thời về Phòng Công tác HSSV trong khoảng thời gian này (Điều 13, khoản 4).",
+            "category": "Scholarship",
+            "subcategory": "Incentive Scholarship"
+        },
+        {
+            "question": "Quyết định ban hành quy định về học bổng của Trường Đại học Công nghệ Thông tin và Truyền thông có số hiệu và nội dung chính là gì?",
+            "answer": "Quyết định ban hành quy định về học bổng của Trường Đại học Công nghệ Thông tin và Truyền thông có số hiệu 51/QĐ-ĐHCNTT&TT. Nội dung chính của quyết định là ban hành Quy định về học bổng đối với sinh viên đại học chính quy của Trường Đại học Công nghệ Thông tin và Truyền thông, được Hiệu trưởng Trường Đại học Công nghệ Thông tin và Truyền thông ký tại Thái Nguyên.",
+            "category": "Scholarship",
+            "subcategory": "Administrative"
+        },
+        {
+            "question": "Quyết định ban hành quy định về học bổng của Trường Đại học Công nghệ Thông tin và Truyền thông được ký vào ngày nào và có hiệu lực khi nào?",
+            "answer": "Quyết định ban hành quy định về học bổng của Trường Đại học Công nghệ Thông tin và Truyền thông được ký vào ngày 20 tháng 01 năm 2021 tại Thái Nguyên. Quyết định này có hiệu lực kể từ ngày ký, tức là ngày 20 tháng 01 năm 2021.",
+            "category": "Scholarship",
+            "subcategory": "Administrative"
+        },
+        {
+            "question": "Quyết định ban hành quy định về học bổng của Trường Đại học Công nghệ Thông tin và Truyền thông dựa trên những căn cứ pháp lý nào?",
+            "answer": "Quyết định ban hành quy định về học bổng của Trường Đại học Công nghệ Thông tin và Truyền thông dựa trên các căn cứ pháp lý sau: 1) Quyết định số 44/2007/QĐ-20017 của Thủ tướng Chính phủ Thái Nguyên; 2) Quyết định số 44/2007/QĐ-BGDĐT ngày 15/8/2007 của Bộ trưởng Bộ Giáo dục và Đào tạo; 3) Thông tư số 35/2011/TT-BGT&ĐT ngày 11/8/2011 của Bộ trưởng Bộ Giáo dục và Đào tạo quy định về đào tạo và nhận học bổng, trợ cấp cho người học trong các cơ sở giáo dục thuộc hệ thống giáo dục quốc dân; 4) Thông tư số 16/2018/TT-BGDĐT ngày 03/08/2018 của Bộ trưởng Bộ Giáo dục và Đào tạo quy định về tài trợ cho các cơ sở giáo dục thuộc hệ thống giáo dục quốc dân; 5) Đề nghị của Trưởng phòng Phòng Công tác Học sinh Sinh viên.",
+            "category": "Scholarship",
+            "subcategory": "Administrative"
+        },
+        {
+            "question": "Ai chịu trách nhiệm thi hành Quyết định ban hành quy định về học bổng của Trường Đại học Công nghệ Thông tin và Truyền thông?",
+            "answer": "Những người chịu trách nhiệm thi hành Quyết định ban hành quy định về học bổng của Trường Đại học Công nghệ Thông tin và Truyền thông bao gồm: Thủ trưởng các đơn vị có liên quan, giáo viên chủ nhiệm các lớp và sinh viên đại học chính quy. Quyết định này được gửi đến các đối tượng trên để thực hiện, đồng thời được lưu trữ tại Văn thư (VT) và Phòng Công tác Học sinh Sinh viên (CT HSSV) (Điều 3).",
+            "category": "Scholarship",
+            "subcategory": "Administrative"
+        },
+        {
+            "question": "Ai là người ký Quyết định ban hành quy định về học bổng của Trường Đại học Công nghệ Thông tin và Truyền thông?",
+            "answer": "Quyết định ban hành quy định về học bổng của Trường Đại học Công nghệ Thông tin và Truyền thông được ký bởi Phó Hiệu trưởng thay cho Hiệu trưởng. Phần ký tên được ghi là 'KT: HIỆU TRƯỞNG, PHÓ HIỆU TRƯỞNG', cho thấy người ký là Phó Hiệu trưởng được ủy quyền.",
+            "category": "Scholarship",
+            "subcategory": "Administrative"
+        },
+        {
+            "question": "Quyết định ban hành quy định về học bổng của Trường Đại học Công nghệ Thông tin và Truyền thông được ký vào ngày nào và bởi ai?",
+            "answer": "Quyết định ban hành quy định về học bổng của Trường Đại học Công nghệ Thông tin và Truyền thông được ký vào ngày 20 tháng 01 năm 2021 bởi Hiệu trưởng Trường Đại học Công nghệ Thông tin và Truyền thông. Quyết định này, mang số 51/QĐ-ĐHCNTT&TT, quy định các chính sách học bổng cho sinh viên đại học chính quy và có hiệu lực từ ngày ký.",
             "category": "Scholarship",
             "subcategory": "Issuance"
         },
         {
-            "question": "Quyết định ban hành quy định học bổng được ký bởi ai và dựa trên những căn cứ pháp lý nào?",
-            "answer": "Quyết định được ký bởi Hiệu trưởng Trường Đại học Công nghệ Thông tin và Truyền thông. Các căn cứ pháp lý bao gồm: Quyết định số 468/QĐ-TTg ngày 30/3/2011 của Thủ tướng Chính phủ về việc thành lập Trường; Nghị quyết số 15/NQ-HĐT ngày 24/9/2021 của Chủ tịch Hội đồng trường về Quy chế tổ chức và hoạt động của Trường; Quyết định số 738/QĐ-DHCNTT&TT ngày 28/10/2021 của Hiệu trưởng về chức năng, nhiệm vụ của các đơn vị thuộc Trường; Thông tư số 10/2016/TT-BGDĐT ngày 05/4/2016 của Bộ Giáo dục và Đào tạo; Quyết định số 807/QĐ-DHTN ngày 31/3/2020 của Giám đốc Đại học Thái Nguyên về quản lý người nước ngoài học tập tại ĐHTN; Quyết định số 2292/QĐ-DHTN ngày 17/12/2021 của Giám đốc ĐHTN về Quy chế công tác người học; và đề nghị của Trưởng phòng Công tác HSSV ngày 14/4/2023.",
-            "category": "Scholarship",
-            "subcategory": "Legal Basis"
-        },
-        {
-            "question": "Quyết định này thay thế quyết định nào và có hiệu lực từ khi nào?",
-            "answer": "Quyết định này thay thế Quyết định số 862/QĐ-DHCNTT&TT ngày 31/10/2016 về ban hành Quy định công tác người học. Quyết định có hiệu lực từ ngày 14/4/2023.",
-            "category": "Scholarship",
-            "subcategory": "Predecessor & Effective Date"
-        },
-        {
-            "question": "Quy định này áp dụng cho đối tượng nào?",
-            "answer": "Quy định áp dụng cho sinh viên đại học chính quy của Trường Đại học Công nghệ Thông tin và Truyền thông, bao gồm sinh viên các hệ đào tạo, học viên thạc sĩ, nghiên cứu sinh (NCS) và lưu học sinh (LHS). Sinh viên hệ liên thông và văn bằng 2 không thuộc đối tượng áp dụng.",
-            "category": "Scholarship",
-            "subcategory": "Applicability"
-        },
-        {
-            "question": "Quy định này quy định cụ thể về những nội dung gì?",
-            "answer": "Quy định này quy định về: quyền và nhiệm vụ của người học; nội dung công tác người học; hệ thống tổ chức, quản lý người học; công tác thi đua, khen thưởng và kỷ luật đối với người học; cũng như tổ chức thực hiện quy định.",
-            "category": "Scholarship",
-            "subcategory": "Scope"
-        },
-        {
-            "question": "Mục đích của công tác người học theo quy định này là gì?",
-            "answer": "Mục đích của công tác người học là đảm bảo thực hiện mục tiêu giáo dục theo Luật Giáo dục hiện hành, đảm bảo người học được hưởng đầy đủ quyền lợi và thực hiện các nhiệm vụ trong môi trường học tập, nghiên cứu và rèn luyện tại Trường Đại học Công nghệ Thông tin và Truyền thông.",
-            "category": "Scholarship",
-            "subcategory": "Objectives"
-        },
-        {
-            "question": "Yêu cầu của công tác người học là gì?",
-            "answer": "Công tác người học phải thực hiện đúng chủ trương, đường lối của Đảng, chính sách, pháp luật của Nhà nước Việt Nam và các quy định hiện hành; đảm bảo tính dân chủ, khách quan, công bằng, công khai, minh bạch; là công tác trọng tâm của trường, đòi hỏi trường phải bố trí đủ nguồn lực để thực hiện đầy đủ và hiệu quả.",
-            "category": "Scholarship",
-            "subcategory": "Requirements"
-        },
-        {
-            "question": "Từ 'người học' và 'lưu học sinh' được định nghĩa như thế nào?",
-            "answer": "‘Người học’ bao gồm sinh viên các hệ, học viên thạc sĩ, nghiên cứu sinh và lưu học sinh đang học tập tại trường theo quy định của Luật Giáo dục hiện hành. ‘Lưu học sinh’ (LHS) là người nước ngoài học tập tại trường, từ trình độ đại học đến nghiên cứu sinh, hoặc tham gia các chương trình bồi dưỡng nâng cao trình độ.",
-            "category": "Scholarship",
-            "subcategory": "Definitions"
-        },
-        {
-            "question": "Người học có những quyền gì theo quy định này?",
-            "answer": "Người học được đảm bảo các quyền theo Hiến pháp và pháp luật Việt Nam, bao gồm:\n- Được giáo dục, đào tạo để phát triển toàn diện, phát huy tiềm năng, năng khiếu, đổi mới sáng tạo và được tư vấn về việc làm, khởi nghiệp.\n- Học tập, rèn luyện trong môi trường an toàn, lành mạnh.\n- Được phổ biến nội quy, quy chế của trường và được tham gia góp ý xây dựng các quy định liên quan.\n- Học theo tiến độ phù hợp (bao gồm học nhanh, học chậm, học song song, chuyển tiếp, nghỉ học tạm thời, thôi học, chuyển lớp, khóa, trường theo quy chế đào tạo).\n- Sử dụng cơ sở vật chất, thư viện, trang thiết bị phục vụ học tập, văn hóa và thể thao.\n- Kiến nghị giải pháp xây dựng trường và bảo vệ quyền lợi hợp pháp.\n- Tham gia Hội đồng trường, các tổ chức đoàn thể và hoạt động xã hội.\n- Hưởng các chế độ, chính sách theo quy định của pháp luật.\n- Được xét vào nội trú.\n- Tham gia học tập, nghiên cứu khoa học, các hoạt động ngoại khóa và chương trình trải nghiệm trong và ngoài nước.\n- Được cấp văn bằng, chứng chỉ, giấy xác nhận sau khi tốt nghiệp.",
-            "category": "Scholarship",
-            "subcategory": "Student Rights"
-        },
-        {
-            "question": "Lưu học sinh có quyền gì đặc biệt?",
-            "answer": "Ngoài các quyền như người học trong nước, lưu học sinh được hưởng thêm quyền:\n- Nghỉ hè, nghỉ lễ và mời thân nhân thăm theo quy định.\n- Nghỉ phép, nghỉ ốm, chữa bệnh theo quy định của trường.\n- Hưởng tiêu chuẩn, chế độ theo hiệp định quốc tế (nếu thuộc diện hiệp định).\n- Được bảo hộ lãnh sự và hỗ trợ giải quyết các vấn đề lãnh sự, tư pháp trong quá trình học tập tại trường.",
-            "category": "Scholarship",
-            "subcategory": "International Student Rights"
-        },
-        {
-            "question": "Người học có những nghĩa vụ gì theo quy định này?",
-            "answer": "Người học phải:\n- Tuân thủ Hiến pháp, pháp luật Việt Nam, quy định của Bộ Giáo dục, Đại học CNTT&TT và của trường.\n- Học tập, tự học, tự nghiên cứu, sáng tạo và rèn luyện đạo đức, kỹ năng.\n- Ứng xử văn hóa, tôn trọng viên chức, người lao động và đoàn kết với bạn bè.\n- Tham gia bảo hiểm y tế và khám sức khỏe định kỳ theo quy định.\n- Thực hiện đầy đủ nghĩa vụ tài chính (học phí, lệ phí) đúng hạn.\n- Bảo vệ tài sản và xây dựng truyền thống của trường.\n- Tham gia hoạt động ngoại khóa, lao động công ích, tình nguyện và bảo vệ môi trường.\n- Phòng chống tiêu cực, gian lận, đảm bảo an ninh, trật tự.",
-            "category": "Scholarship",
-            "subcategory": "Student Obligations"
-        },
-        {
-            "question": "Lưu học sinh có nghĩa vụ gì đặc biệt?",
-            "answer": "Lưu học sinh phải:\n- Tuân thủ pháp luật và phong tục tập quán Việt Nam.\n- Thực hiện quy định quản lý người nước ngoài và quy định nhập cảnh của trường.\n- Quan hệ hữu nghị với công dân Việt Nam và các lưu học sinh khác.\n- Kiểm tra sức khỏe sau khi nhập trường; nếu không đủ điều kiện sức khỏe thì phải về nước.\n- Tham gia bảo hiểm y tế, bảo hiểm thân thể và ở nội trú do trường quản lý.\n- Chấp hành quy định ở trong khu nội trú của trường, không tự ý thuê chỗ ở ngoài nếu không có sự đồng ý của trường.",
-            "category": "Scholarship",
-            "subcategory": "International Student Obligations"
-        },
-        {
-            "question": "Các hành vi nào người học không được thực hiện?",
-            "answer": "Người học không được:\n- Thực hiện hành vi vi phạm pháp luật, trái đạo đức xã hội và Luật Giáo dục.\n- Xâm phạm lợi ích quốc gia, dân tộc và quyền lợi hợp pháp của người khác.\n- Vi phạm nội quy, quy định của Đại học CNTT&TT và của trường.",
-            "category": "Scholarship",
-            "subcategory": "Prohibitions"
-        },
-        {
-            "question": "Các hoạt động giáo dục và bồi dưỡng cho người học bao gồm những gì và mục đích gì?",
-            "answer": "Các hoạt động bao gồm:\n- Giáo dục chính trị tư tưởng: Tuyên truyền chủ trương, đường lối Đảng, pháp luật; phát huy vai trò đoàn thể.\n- Giáo dục đạo đức, lối sống: Giáo dục giá trị văn hóa, định hướng lối sống lành mạnh.\n- Phổ biến, giáo dục pháp luật: Nâng cao ý thức pháp luật, tập trung vào quy chế học tập và phòng chống tội phạm.\n- Giáo dục, bồi dưỡng kỹ năng: Rèn luyện kỹ năng sống, nghề nghiệp, tổ chức thi đua và hoạt động tình nguyện.\n- Giáo dục thẩm mỹ: Phát huy cái đẹp, phê phán cái xấu.\n- Giáo dục thể chất và y tế: Tuyên truyền thể thao, chăm sóc sức khỏe, phòng chống dịch bệnh.\n- Thực hiện chế độ, chính sách: Hỗ trợ người học có hoàn cảnh khó khăn.",
-            "category": "Scholarship",
-            "subcategory": "Educational Activities"
-        },
-        {
-            "question": "Nội dung giáo dục pháp luật tập trung vào những vấn đề gì?",
-            "answer": "Nội dung giáo dục pháp luật tập trung vào:\n- Quy chế, quy định về học tập và rèn luyện của trường.\n- Pháp luật về phòng chống tội phạm, tệ nạn xã hội và tham nhũng.\n- Quy định về an toàn giao thông, phòng cháy chữa cháy, bảo vệ môi trường và phòng chống dịch bệnh.",
-            "category": "Scholarship",
-            "subcategory": "Legal Education"
-        },
-        {
-            "question": "Công tác quản lý người học bao gồm những nội dung gì?",
-            "answer": "Công tác quản lý người học bao gồm:\n- Tổ chức, hành chính: Tiếp nhận thí sinh, phân lớp, cấp thẻ và quản lý hồ sơ người học.\n- Kiểm tra, giám sát: Xây dựng cơ sở dữ liệu, đánh giá học tập và rèn luyện.\n- Nội trú, ngoại trú: Ban hành quy định và tổ chức thực hiện.\n- Bảo đảm an ninh, trật tự: Ban hành nội quy và phối hợp với địa phương.\n- Chế độ, chính sách: Công khai, thực hiện chính sách và trao học bổng.\n- Thi đua, khen thưởng, kỷ luật: Thực hiện theo quy định pháp luật.",
-            "category": "Scholarship",
-            "subcategory": "Management"
-        },
-        {
-            "question": "Công tác tổ chức, hành chính bao gồm những hoạt động gì?",
-            "answer": "Công tác tổ chức, hành chính bao gồm:\n- Tiếp nhận thí sinh trúng tuyển, tổ chức phân lớp, cấp thẻ người học.\n- Phân công giáo viên chủ nhiệm và cố vấn học tập cho từng lớp hoặc nhóm người học.\n- Quản lý hồ sơ người học, tổ chức cấp phát văn bằng, chứng chỉ khi người học hoàn thành chương trình.\n- Tổ chức các buổi đối thoại, trao đổi thông tin giữa nhà trường và người học.\n- Ứng dụng công nghệ thông tin để nâng cao hiệu quả quản lý người học.",
-            "category": "Scholarship",
-            "subcategory": "Management Procedures"
-        },
-        {
-            "question": "Công tác quản lý lưu học sinh có điểm gì đặc biệt?",
-            "answer": "Công tác quản lý lưu học sinh bao gồm:\n- Cung cấp thông tin về quốc gia và vùng lãnh thổ của lưu học sinh đến học tập.\n- Kiểm tra, thẩm định hồ sơ lưu học sinh về mặt đối ngoại trước khi tiếp nhận.\n- Báo cáo định kỳ hoặc đột xuất về quá trình đào tạo và kết quả học tập của lưu học sinh cho các cơ quan có thẩm quyền.",
-            "category": "Scholarship",
-            "subcategory": "International Students Management"
-        },
-        {
-            "question": "Công tác hỗ trợ và dịch vụ hỗ trợ người học bao gồm những gì?",
-            "answer": "Công tác hỗ trợ và dịch vụ bao gồm:\n- Hỗ trợ học tập: Tư vấn kế hoạch học tập và cung cấp nguồn lực.\n- Hướng nghiệp và tư vấn việc làm: Tổ chức chương trình hỗ trợ khởi nghiệp.\n- Tư vấn tâm lý và chăm sóc sức khỏe.\n- Hỗ trợ tài chính: Quản lý quỹ học bổng và hỗ trợ tín dụng đào tạo.\n- Dịch vụ công tác xã hội: Hỗ trợ người học có hoàn cảnh khó khăn và khuyết tật.\n- Các dịch vụ khác: Ứng dụng công nghệ thông tin để cung cấp tiện ích hỗ trợ.",
-            "category": "Scholarship",
-            "subcategory": "Support Services"
-        },
-        {
-            "question": "Công tác hỗ trợ tài chính cho người học được thực hiện như thế nào?",
-            "answer": "Công tác hỗ trợ tài chính bao gồm:\n- Quản lý quỹ học bổng và các khoản hỗ trợ từ các tổ chức, cá nhân trong và ngoài nước.\n- Hỗ trợ sinh viên tham gia chương trình tín dụng đào tạo theo quy định của Nhà nước.\n- Tổ chức trao học bổng cho sinh viên có thành tích tiêu biểu hoặc có hoàn cảnh khó khăn, đảm bảo tính minh bạch và công bằng.",
-            "category": "Scholarship",
-            "subcategory": "Financial Support"
-        },
-        {
-            "question": "Công tác kết nối và phục vụ cộng đồng được thực hiện như thế nào?",
-            "answer": "Công tác kết nối và phục vụ cộng đồng được thực hiện thông qua việc xây dựng quy định, tổ chức cho người học tham gia hoạt động cộng đồng, đồng thời giám sát và đánh giá kết quả hàng năm theo yêu cầu của cơ quan kiểm định giáo dục.",
-            "category": "Scholarship",
-            "subcategory": "Community Engagement"
-        },
-        {
             "question": "Hồ sơ đăng ký xét cấp học bổng bao gồm những gì?",
-            "answer": "Hồ sơ đăng ký xét cấp học bổng bao gồm:\n- Đối với học bổng khuyến khích học tập: Đơn đăng ký xét cấp và bảng điểm học tập, rèn luyện (với sinh viên năm thứ nhất dựa trên thông báo tuyển sinh và sinh viên từ năm thứ 2 theo bảng điểm học kỳ).\n- Đối với học bổng tài trợ: Đơn đăng ký xét cấp kèm theo các giấy tờ khác theo yêu cầu của từng loại học bổng.",
+            "answer": "Hồ sơ đăng ký xét cấp học bổng bao gồm:\n- Đối với học bổng khuyến khích học tập: Đơn đăng ký xét cấp và bảng điểm học tập, rèn luyện (với sinh viên năm thứ nhất dựa trên thông báo tuyển sinh và sinh viên từ năm thứ 2 theo bảng điểm học kỳ).\n- Đối với học bổng tài trợ: Đơn đăng ký xét cấp kèm theo các giấy tờ khác theo yêu cầu của từng loại học bổng (Điều 19).",
             "category": "Scholarship",
             "subcategory": "Application Documents"
         },
         {
             "question": "Hội đồng xét học bổng (cả học bổng tài trợ và học bổng khuyến khích học tập) gồm những ai?",
-            "answer": "Hội đồng xét học bổng bao gồm:\n- Chủ tịch Hội đồng: Một thành viên trong Ban Giám hiệu của trường (Hiệu trưởng hoặc Phó Hiệu trưởng được ủy quyền).\n- Các thành viên đại diện các phòng ban chức năng như: Phòng Công tác Sinh viên, Phòng Đào tạo, Phòng Tuyển sinh, Phòng Tài chính - Kế toán, Đoàn Thanh niên, Hội sinh viên và các đơn vị liên quan.\n- Đối với học bổng tài trợ, Hội đồng được thành lập riêng cho từng loại học bổng dựa trên sự phối hợp với nhà tài trợ.",
+            "answer": "Hội đồng xét học bổng bao gồm:\n- Chủ tịch Hội đồng: Một thành viên trong Ban Giám hiệu của trường (Hiệu trưởng hoặc Phó Hiệu trưởng được ủy quyền).\n- Các thành viên đại diện các phòng ban chức năng như: Phòng Công tác Sinh viên, Phòng Đào tạo, Phòng Tuyển sinh, Phòng Tài chính - Kế toán, Đoàn Thanh niên, Hội sinh viên và các đơn vị liên quan.\n- Đối với học bổng tài trợ, Hội đồng được thành lập riêng cho từng loại học bổng dựa trên sự phối hợp với nhà tài trợ (Điều 20).",
             "category": "Scholarship",
             "subcategory": "Scholarship Committee"
         },
         {
-            "question": "Quy định học bổng có hiệu lực từ khi nào và thay thế cho quyết định nào?",
-            "answer": "Quy định có hiệu lực từ ngày 20 tháng 01 năm 2021 và thay thế Quyết định số 1253/QĐ-ĐHCNTT&TT ngày 31/12/2019 về học bổng khuyến khích học tập đối với sinh viên đại học chính quy.",
+            "question": "Quy định học bổng đối với sinh viên đại học chính quy của Trường Đại học Công nghệ Thoong tin và Truyền thông có hiệu lực từ khi nào và thay thế cho quyết định nào?",
+            "answer": "Quy định có hiệu lực từ ngày 20 tháng 01 năm 2021 và thay thế Quyết định số 1253/QĐ-ĐHCNTT&TT ngày 31/12/2019 về học bổng khuyến khích học tập đối với sinh viên đại học chính quy (Điều 2).",
             "category": "Scholarship",
             "subcategory": "Effective Date & Replacement"
         },
         {
             "question": "Đơn vị nào chịu trách nhiệm thực hiện việc xét học bổng cho sinh viên?",
-            "answer": "Phòng Công tác HSSV chịu trách nhiệm chủ trì và thực hiện việc xét học bổng cho sinh viên, phối hợp với các phòng chức năng và Khoa chuyên môn để đảm bảo quá trình xét học bổng được thực hiện một cách suôn sẻ và chính xác.",
+            "answer": "Phòng Công tác HSSV chịu trách nhiệm chủ trì và thực hiện việc xét học bổng cho sinh viên, phối hợp với các phòng chức năng và Khoa chuyên môn để đảm bảo quá trình xét học bổng được thực hiện một cách suôn sẻ và chính xác (Điều 21).",
             "category": "Scholarship",
             "subcategory": "Administration"
+        },
+        {
+            "question": "Các khoa và phòng ban có vai trò gì trong việc thực hiện quy định học bổng?",
+            "answer": "Các khoa: Cung cấp thông tin về kết quả học tập và rèn luyện của sinh viên. Phòng Đào tạo: Xác nhận kết quả học tập và số tín chỉ. Phòng Kế hoạch - Tài chính: Quản lý và phân bổ ngân sách học bổng. Phòng Công tác HSSV: Chủ trì xét duyệt và chi trả học bổng (Điều 21).",
+            "category": "Scholarship",
+            "subcategory": "Implementation"
+        },
+        {
+            "question": "Ai chịu trách nhiệm giải quyết các vấn đề phát sinh liên quan đến quy định học bổng?",
+            "answer": "Hiệu trưởng Trường Đại học Công nghệ Thông tin và Truyền thông chịu trách nhiệm giải quyết các vấn đề phát sinh hoặc chưa được quy định rõ trong văn bản này (Điều 22).",
+            "category": "Scholarship",
+            "subcategory": "Implementation"
+        },
+        {
+            "question": "HB KKHT được xếp loại như thế nào?",
+            "answer": "HB KKHT tại Trường Đại học Công nghệ Thông tin và Truyền thông được xếp loại thành ba mức: 1) Loại Xuất sắc: Điểm trung bình chung học kỳ từ 3.60 đến 4.00 (thang điểm 4) và điểm rèn luyện đạt loại Xuất sắc; 2) Loại Giỏi: Điểm trung bình chung học kỳ từ 3.60 đến 4.00 và điểm rèn luyện đạt loại Tốt, hoặc điểm trung bình chung học kỳ từ 3.20 đến 3.59 và điểm rèn luyện đạt loại Xuất sắc hoặc Tốt; 3) Loại Khá: Điểm trung bình chung học kỳ từ 3.60 đến 4.00 và điểm rèn luyện đạt loại Khá, hoặc điểm trung bình chung học kỳ từ 3.20 đến 3.59 và điểm rèn luyện đạt loại Khá, hoặc điểm trung bình chung học kỳ từ 2.5 đến 3.19 và điểm rèn luyện đạt loại Khá (Điều 7, khoản 1).",
+            "category": "Scholarship",
+            "subcategory": "Evaluation and Scholarship Amount"
+        },
+        {
+            "question": "Điểm trung bình chung học kỳ (TBCHK) tối thiểu để được xét HB KKHT là bao nhiêu?",
+            "answer": "Điểm trung bình chung học kỳ (TBCHK) tối thiểu để được xét HB KKHT là 2.5/4.0 (tương ứng với mức Khá), theo quy định tại Điều 7, khoản 1. Tuy nhiên, mức điểm cụ thể có thể thay đổi tùy theo từng học kỳ, do Hội đồng xét học bổng quyết định dựa trên số lượng sinh viên đạt điều kiện và ngân sách học bổng.",
+            "category": "Scholarship",
+            "subcategory": "Evaluation and Scholarship Amount"
+        },
+        {
+            "question": "Điểm rèn luyện tối thiểu để được xét HB KKHT là bao nhiêu?",
+            "answer": "Sinh viên cần đạt điểm rèn luyện từ loại Khá trở lên, tức là ≥ 70/100 điểm trên thang điểm rèn luyện của Trường Đại học Công nghệ Thông tin và Truyền thông (theo Điều 6, khoản 3).",
+            "category": "Scholarship",
+            "subcategory": "Evaluation and Scholarship Amount"
+        },
+        {
+            "question": "Điểm TBCHK và điểm rèn luyện ảnh hưởng như thế nào đến mức cấp HB KKHT?",
+            "answer": "Mức cấp HB KKHT phụ thuộc vào sự kết hợp của điểm TBCHK và điểm rèn luyện: 1) Loại Xuất sắc (điểm TBCHK từ 3.60 đến 4.00 và điểm rèn luyện Xuất sắc) nhận mức cao nhất; 2) Loại Giỏi (điểm TBCHK từ 3.20 đến 3.59 và điểm rèn luyện Xuất sắc hoặc Tốt, hoặc điểm TBCHK từ 3.60 đến 4.00 và điểm rèn luyện Tốt) nhận mức trung bình; 3) Loại Khá (điểm TBCHK từ 2.5 đến 3.19 và điểm rèn luyện Khá, hoặc các trường hợp khác trong khoảng Khá) nhận mức thấp nhất. Mức cụ thể do Hội đồng xét học bổng quyết định dựa trên ngân sách phân bổ (Điều 7, Điều 8).",
+            "category": "Scholarship",
+            "subcategory": "Evaluation and Scholarship Amount"
+        },
+        {
+            "question": "Mức cấp cụ thể của HB KKHT là bao nhiêu?",
+            "answer": "Mức cấp HB KKHT được quy định như sau: 1) Mức loại Khá bằng mức thu học phí theo quy định của năm học đó tính theo niên chế/tháng; 2) Mức loại Giỏi bằng mức loại Khá cộng thêm 100.000 đồng; 3) Mức loại Xuất sắc bằng mức loại Giỏi cộng thêm 100.000 đồng. Số tiền cụ thể phụ thuộc vào mức học phí từng năm học và được Hội đồng xét học bổng xác định (Điều 8).",
+            "category": "Scholarship",
+            "subcategory": "Evaluation and Scholarship Amount"
+        },
+        {
+            "question": "Sinh viên có thể nhận HB KKHT với mức nào nếu đạt điểm TBCHK và điểm rèn luyện xuất sắc?",
+            "answer": "Nếu sinh viên đạt điểm TBCHK ≥ 3.60/4.0 và điểm rèn luyện ≥ 90/100 (Xuất sắc), họ sẽ nhận mức học bổng loại Xuất sắc, bằng mức học phí theo niên chế/tháng cộng thêm 200.000 đồng (100.000 đồng từ mức Giỏi và 100.000 đồng từ mức Xuất sắc). Số tiền cụ thể tùy thuộc vào học phí năm học đó và quyết định của Hội đồng xét học bổng (Điều 8).",
+            "category": "Scholarship",
+            "subcategory": "Evaluation and Scholarship Amount"
+        },
+        {
+            "question": "Điểm rèn luyện được tính như thế nào trong việc xét HB KKHT?",
+            "answer": "Điểm rèn luyện được tính theo 'Quy định đánh giá điểm rèn luyện' hiện hành của Trường Đại học Công nghệ Thông tin và Truyền thông, bao gồm các tiêu chí: ý thức học tập (chuyên cần, thái độ học tập), ý thức chấp hành nội quy, tham gia hoạt động xã hội (đoàn thể, tình nguyện), và các tiêu chí khác như ứng xử, thành tích cá nhân. Điểm rèn luyện tối thiểu để xét HB KKHT là ≥ 70/100 (loại Khá) (Điều 6, khoản 3).",
+            "category": "Scholarship",
+            "subcategory": "Evaluation and Scholarship Amount"
+        },
+        {
+            "question": "Sinh viên có điểm TBCHK cao nhưng điểm rèn luyện thấp có được nhận HB KKHT không?",
+            "answer": "Không. Sinh viên phải đáp ứng đồng thời hai điều kiện: điểm TBCHK đạt từ 2.5/4.0 trở lên và điểm rèn luyện ≥ 70/100. Nếu điểm rèn luyện dưới 70, sinh viên sẽ không đủ điều kiện nhận HB KKHT, dù điểm TBCHK có cao đến đâu (Điều 6, khoản 3).",
+            "category": "Scholarship",
+            "subcategory": "Evaluation and Scholarship Amount"
+        },
+        {
+            "question": "Điểm TBCHK được tính như thế nào để xét HB KKHT?",
+            "answer": "Điểm TBCHK là trung bình có trọng số của các môn học trong học kỳ xét học bổng, tính theo công thức: TBCHK = (Σ (Điểm môn học × Số tín chỉ)) / Tổng số tín chỉ. Điểm này phải đạt từ 2.5/4.0 trở lên để đủ điều kiện xét HB KKHT (Điều 7, khoản 1).",
+            "category": "Scholarship",
+            "subcategory": "Evaluation and Scholarship Amount"
+        },
+        {
+            "question": "Sinh viên có thể nhận HB KKHT nếu có môn học bị điểm F không?",
+            "answer": "Không. Theo yêu cầu 'thành tích học tập cao' (Điều 6), sinh viên không được có môn học nào bị điểm F (rớt) trong học kỳ xét học bổng. Nếu có điểm F, sinh viên sẽ không đủ điều kiện nhận HB KKHT.",
+            "category": "Scholarship",
+            "subcategory": "Evaluation and Scholarship Amount"
         }
     ]
 }

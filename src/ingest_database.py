@@ -5,6 +5,7 @@ from openai import OpenAI
 import chromadb
 from chromadb.utils import embedding_functions
 from typing import Dict, List
+import glob
 
 # Load environment variables
 load_dotenv()
@@ -35,14 +36,19 @@ def process_and_upload_file(file_path: str, collection_name: str):
             data = json.load(file)
             qa_pairs = data.get('qa_pairs', [])
             
+            if not qa_pairs:
+                print(f"Warning: No QA pairs found in {file_path}")
+                return 0
+            
             # Prepare data for batch upload
             ids = []
             documents = []
             metadatas = []
             
             for i, qa_pair in enumerate(qa_pairs):
-                # Create unique ID
-                unique_id = f"qa_{i}"
+                # Create unique ID using filename and index for better traceability
+                file_basename = os.path.basename(file_path).replace('.json', '')
+                unique_id = f"{file_basename}_qa_{i}"
                 
                 # Combine question and answer for document
                 document = f"Câu hỏi: {qa_pair['question'].strip()} Trả lời: {qa_pair['answer'].strip()}"
@@ -67,7 +73,7 @@ def process_and_upload_file(file_path: str, collection_name: str):
                         documents=documents,
                         metadatas=metadatas
                     )
-                    print(f"Processed {i + 1}/{len(qa_pairs)} QA pairs")
+                    print(f"Processed {i + 1}/{len(qa_pairs)} QA pairs from {file_path}")
                     ids, documents, metadatas = [], [], []
             
             # Upload any remaining items
@@ -77,42 +83,49 @@ def process_and_upload_file(file_path: str, collection_name: str):
                     documents=documents,
                     metadatas=metadatas
                 )
-                print(f"Processed all {len(qa_pairs)} QA pairs")
-        
-        print(f"Total items in collection: {collection.count()}")
+                print(f"Processed all {len(qa_pairs)} QA pairs from {file_path}")
+            
+            return len(qa_pairs)
         
     except Exception as e:
-        print(f"Detailed error: {str(e)}")
-        raise
+        print(f"Error processing {file_path}: {str(e)}")
+        return 0
 
-def search_qa_pairs(query: str, n_results: int = 3):
-    """Search for similar QA pairs"""
+def process_all_files(data_folder: str, collection_name: str):
+    """Process all JSON files in the data folder"""
+    # Find all JSON files in the data folder
+    json_files = glob.glob(os.path.join(data_folder, "*.json"))
+    
+    if not json_files:
+        print(f"No JSON files found in {data_folder}")
+        return
+    
+    print(f"Found {len(json_files)} JSON files in {data_folder}")
+    
+    total_processed = 0
+    for file_path in json_files:
+        print(f"\nProcessing: {file_path}")
+        count = process_and_upload_file(file_path, collection_name)
+        total_processed += count
+    
+    # Get final collection count
     collection = chroma_client.get_collection(
-        name="scholarship-qa",
+        name=collection_name,
         embedding_function=openai_ef
     )
     
-    results = collection.query(
-        query_texts=[query],
-        n_results=n_results
-    )
-    
-    return results
+    print(f"\nEmbedding complete!")
+    print(f"Total QA pairs processed: {total_processed}")
+    print(f"Total items in collection: {collection.count()}")
 
 if __name__ == "__main__":
-    file_path = "data/NĐ 84_QĐ ve HB.json"
+    data_folder = "data"
     collection_name = "scholarship-qa"
     
     try:
-        # Process and upload data
-        process_and_upload_file(file_path, collection_name)
+        # Process and upload all JSON files in the data folder
+        process_all_files(data_folder, collection_name)
         print("Processing completed successfully!")
-        
-        # Example search (uncomment to test)
-        # test_query = "Cho tôi biết về học bổng"
-        # results = search_qa_pairs(test_query)
-        # print("\nSearch Results:")
-        # print(results)
-        
+
     except Exception as e:
         print(f"An error occurred: {str(e)}")
