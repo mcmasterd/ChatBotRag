@@ -59,7 +59,8 @@ def process_and_upload_file(file_path: str, collection_name: str):
                     'answer': qa_pair['answer'],
                     'category': qa_pair.get('category', ''),
                     'subcategory': qa_pair.get('subcategory', ''),
-                    'source': file_path
+                    'source': file_path,
+                    'version': data.get('version', '1.0')  # Assume a version field in JSON
                 }
                 
                 ids.append(unique_id)
