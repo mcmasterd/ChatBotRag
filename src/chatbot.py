@@ -21,7 +21,7 @@ collection = chroma_client.get_collection(name="scholarship-qa", embedding_funct
 
 # Simplified response cache with size limit
 _response_cache = {}
-MAX_CACHE_SIZE = 100
+MAX_CACHE_SIZE = 30
 
 # Category keyword mapping with inverse index for fast lookup
 CATEGORY_KEYWORDS = {
@@ -32,14 +32,11 @@ CATEGORY_KEYWORDS = {
 KEYWORD_TO_CATEGORY = {kw: cat for cat, keywords in CATEGORY_KEYWORDS.items() for kw in keywords}
 
 def detect_categories(query: str) -> Set[str]:
-    """Detect categories from query using keyword matching"""
+    """Detect categories from query using keyword matching with improved fallback"""
     query_lower = query.lower()
     detected = {KEYWORD_TO_CATEGORY[kw] for kw in KEYWORD_TO_CATEGORY if kw in query_lower}
     
-    # Add fallback category for common queries if no category is detected
-    if not detected and any(term in query_lower for term in ["học bổng", "scholarship"]):
-        detected.add("Scholarship")
-        
+    # More flexible detection - if no categories detected, we'll use pure vector search
     return detected
 
 def build_category_filter(categories: Set[str]):
@@ -53,20 +50,28 @@ def build_category_filter(categories: Set[str]):
     
     return {"$or": [{"category": cat} for cat in categories] + [{"subcategory": cat} for cat in categories]}
 
-def get_relevant_content(query: str, use_categories: bool = True, final_results: int = 4) -> List[Dict]:
+def get_relevant_content(query: str, use_categories: bool = False, final_results: int = 4) -> List[Dict]:
     """Get relevant content with hybrid retrieval and reranking"""
     start = time.time()
     
     # Build filter based on detected categories
     filter_dict = None
+    categories = set()
+    
     if use_categories:
         categories = detect_categories(query)
-        print(f"Detected categories: {categories}")
-        filter_dict = build_category_filter(categories)
+        if categories:
+            print(f"Detected categories: {categories}")
+            filter_dict = build_category_filter(categories)
     
     try:
         # First stage: retrieve initial results
         initial_results = 10
+        
+        # If no categories detected, use pure vector search with more results
+        if not categories and use_categories:
+            print("No categories detected, using pure vector similarity search")
+        
         results = collection.query(
             query_texts=[query],
             n_results=initial_results,
@@ -137,6 +142,7 @@ def create_prompt(query: str, content: List[Dict]) -> str:
         
         context_str = f"Q: {item.get('question', '')}\nA: {item.get('answer', '')}"
         source_info = extract_source_info(item.get('answer', ''))
+
         if not source_info and item.get('source'):
             source_info = item.get('source', '').split('/')[-1]
             
@@ -156,9 +162,9 @@ def create_prompt(query: str, content: List[Dict]) -> str:
     CÂU HỎI: {1}
     
     Hướng dẫn:
-    1. Tổng hợp thông tin từ tất cả các nguồn liên quan được cung cấp.
-    2. Nếu có thông tin mâu thuẫn, ưu tiên thông tin từ nguồn mới nhất.
-    3. Bỏ qua những thông tin không liên quan đến câu hỏi.
+    1. Bỏ qua những thông tin không liên quan đến câu hỏi.
+    2. Tổng hợp các điểm chung giữa các nguồn thông tin để đưa ra câu trả lời tổng hợp, đáp ứng với yêu cầu của câu hỏi.
+    3. Nếu có thông tin mâu thuẫn, ưu tiên thông tin từ nguồn mới nhất.
     4. Trả lời một cách rõ ràng và có cấu trúc.
     5. Khi liệt kê các điều kiện hoặc bước, trình bày dưới dạng danh sách có đánh số.
     6. Trích dẫn nguồn tài liệu cụ thể ở cuối câu trả lời.
@@ -175,14 +181,14 @@ def get_llm_response(prompt: str) -> str:
         model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": 
-             "Bạn là trợ lý tư vấn thông tin học bổng. Trả lời ngắn gọn, chính xác và đầy đủ. "
+             "Bạn là trợ lý tư vấn thông tin chuyên nghiệp. Trả lời ngắn gọn, chính xác và đầy đủ. "
              "Sử dụng định dạng rõ ràng với các điểm chính được trình bày dưới dạng danh sách. "
              "Trích dẫn nguồn tài liệu rõ ràng. Thừa nhận khi không có đủ thông tin."
             },
             {"role": "user", "content": prompt}
         ],
         temperature=0.3,
-        max_tokens=500,
+        max_tokens=600,
         presence_penalty=0.3
     )
     
@@ -190,7 +196,6 @@ def get_llm_response(prompt: str) -> str:
     return response.choices[0].message.content
 
 def process_user_query(query: str) -> str:
-    """Process user query with optimized workflow"""
     try:
         start = time.time()
         
@@ -202,12 +207,14 @@ def process_user_query(query: str) -> str:
             return _response_cache[normalized_query]
         
         # Adjust number of results based on query complexity
-        n_results = 3 if len(query.split()) > 6 else 5
+        n_results = 4 if len(query.split()) > 6 else 5
         
-        # Search with categories, fallback if needed
-        relevant_content = get_relevant_content(query, use_categories=True, final_results=n_results)
-        if not relevant_content:
-            print("Falling back to embedding-only search")
+        # First try with category filtering
+        relevant_content = get_relevant_content(query, use_categories=False, final_results=n_results)
+        
+        # If no results or very few results with categories, fall back to pure vector search
+        if len(relevant_content) < 2:
+            print("Insufficient results with categories, falling back to pure vector search")
             relevant_content = get_relevant_content(query, use_categories=False, final_results=5)
         
         # Generate response
@@ -219,7 +226,7 @@ def process_user_query(query: str) -> str:
             _response_cache.pop(next(iter(_response_cache)))
         _response_cache[normalized_query] = response
         
-        print(f"Total response time: {time.time() - start:.2f}s")
+        print(f"Total response time: {time.time() - start:.2f}s\n")
         return response
         
     except Exception as e:
