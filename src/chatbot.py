@@ -296,8 +296,8 @@ demo = gr.ChatInterface(
 if __name__ == "__main__":
     demo.queue(max_size=10)
     demo.launch(
-        server_name="127.0.0.1", 
+        server_name="0.0.0.0", 
         server_port=7860, 
-        share=True,
+        share=False,
         show_error=True
     )
