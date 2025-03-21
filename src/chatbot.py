@@ -12,15 +12,27 @@ from flask_cors import CORS
 
 # Load environment variables and initialize clients
 load_dotenv()
-client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(CURRENT_DIR)
 CHROMA_PATH = os.path.join(BASE_DIR, "chroma_db")
+
+client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 chroma_client = chromadb.PersistentClient(path=CHROMA_PATH)
 embedding_function = chromadb.utils.embedding_functions.OpenAIEmbeddingFunction(
     api_key=os.getenv('OPENAI_API_KEY'),
     model_name="text-embedding-3-small"
 )
-collection = chroma_client.get_collection(name="scholarship-qa", embedding_function=embedding_function)
+try:
+    collection = chroma_client.get_collection(name="scholarship-qa", embedding_function=embedding_function)
+except chromadb.errors.InvalidCollectionException:
+    print("Collection 'scholarship-qa' does not exist. Creating new collection...")
+    collection = chroma_client.create_collection(name="scholarship-qa", embedding_function=embedding_function)
+    collection.add(
+        documents=["Đây là tài liệu mẫu về học bổng ICTU"],
+        metadatas=[{"source": "ictu.edu.vn"}],
+        ids=["doc1"]
+    )
+    print("Collection 'scholarship-qa' created successfully.")
 
 # Simplified response cache with size limit
 _response_cache = {}
