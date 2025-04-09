@@ -41,10 +41,37 @@ server {
 
     location /ask {
         proxy_pass http://127.0.0.1:1508/ask;
-        ...
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 90s;
+        proxy_connect_timeout 90s;
+        proxy_send_timeout 90s;
     }
-}
 
+    location /get_user_id {
+        proxy_pass http://127.0.0.1:1508/get_user_id;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 90s;
+        proxy_connect_timeout 90s;
+        proxy_send_timeout 90s;
+    }
+
+    location /get_session_history {
+        proxy_pass http://127.0.0.1:1508/get_session_history;
+proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 90s;
+        proxy_connect_timeout 90s;
+        proxy_send_timeout 90s;
+}
+}
 server {
     listen 7860;
     listen [::]:7860;
@@ -60,9 +87,36 @@ server {
 
     location /ask {
         proxy_pass http://127.0.0.1:1508/ask;
-        ...
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 90s;
+        proxy_connect_timeout 90s;
+        proxy_send_timeout 90s;
+    }
+location /get_user_id {
+        proxy_pass http://127.0.0.1:1508/get_user_id;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 90s;
+        proxy_connect_timeout 90s;
+        proxy_send_timeout 90s;
+    }
+    location /get_session_history {
+        proxy_pass http://127.0.0.1:1508/get_session_history;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 90s;
+        proxy_connect_timeout 90s;
+        proxy_send_timeout 90s;
     }
 }
+
 - Khởi động lại nginx
 
 6. Cấu hình Systemd service

@@ -9,18 +9,35 @@ import re
 from collections import Counter
 import math
 from flask_cors import CORS
+import redis
+import json
+import uuid
 
 # Load environment variables and initialize clients
 load_dotenv()
-client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(CURRENT_DIR)
 CHROMA_PATH = os.path.join(BASE_DIR, "chroma_db")
+
+client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 chroma_client = chromadb.PersistentClient(path=CHROMA_PATH)
+redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True, password='terminator')
 embedding_function = chromadb.utils.embedding_functions.OpenAIEmbeddingFunction(
     api_key=os.getenv('OPENAI_API_KEY'),
     model_name="text-embedding-3-small"
 )
-collection = chroma_client.get_collection(name="scholarship-qa", embedding_function=embedding_function)
+
+try:
+    collection = chroma_client.get_collection(name="scholarship-qa", embedding_function=embedding_function)
+except chromadb.errors.InvalidCollectionException:
+    print("Collection 'scholarship-qa' does not exist. Creating new collection...")
+    collection = chroma_client.create_collection(name="scholarship-qa", embedding_function=embedding_function)
+    collection.add(
+        documents=["Đây là tài liệu mẫu về học bổng ICTU"],
+        metadatas=[{"source": "ictu.edu.vn"}],
+        ids=["doc1"]
+    )
+    print("Collection 'scholarship-qa' created successfully.")
 
 # Simplified response cache with size limit
 _response_cache = {}
@@ -149,24 +166,50 @@ def get_llm_response(prompt: str) -> str:
     print(f"LLM response time: {time.time() - start:.4f}s")
     return response.choices[0].message.content
 
-def process_user_query(query: str) -> str:
+def process_user_query(query: str, user_id: str) -> str:
     try:
         start = time.time()
         normalized_query = ' '.join(query.lower().split())
+        
         if normalized_query in _response_cache:
             print(f"Cache hit for query: '{normalized_query}'")
             print(f"Response time: {time.time() - start:.2f}s")
             return _response_cache[normalized_query]
+        
+        # Lấy session từ Redis
+        session_key = f"session:{user_id}"
+        session_data = redis_client.get(session_key)
+        if session_data:
+            session_data = json.loads(session_data)
+        else:
+            session_data = []
+        
+        # Giới hạn session: chỉ lưu 5 tương tác cuối
+        session_data = session_data[-5:]
+        context = "\n".join([f"Q: {item['question']}\nA: {item['answer']}" 
+                           for item in session_data]) if session_data else ""
+        
+        # Tạo prompt với ngữ cảnh
         n_results = 4 if len(query.split()) > 6 else 5
         relevant_content = get_relevant_content(query, use_categories=False, final_results=n_results)
         if len(relevant_content) < 2:
             print("Insufficient results with categories, falling back to pure vector search")
             relevant_content = get_relevant_content(query, use_categories=False, final_results=5)
-        prompt = create_prompt(query, relevant_content)
-        response = get_llm_response(prompt)
+        
+        base_prompt = create_prompt(query, relevant_content)
+        prompt_with_context = f"Lịch sử trò chuyện:\n{context}\n\n{base_prompt}" if context else base_prompt
+        
+        response = get_llm_response(prompt_with_context)
+        
+        # Cập nhật session với TTL (hết hạn sau 1 giờ)
+        session_data.append({"question": query, "answer": response})
+        redis_client.setex(session_key, 900, json.dumps(session_data))  # TTL = 900 giây (15 phút)
+        
+        # Cập nhật cache
         if len(_response_cache) >= MAX_CACHE_SIZE:
             _response_cache.pop(next(iter(_response_cache)))
         _response_cache[normalized_query] = response
+        
         print(f"Total response time: {time.time() - start:.2f}s\n")
         return response
     except Exception as e:
@@ -213,16 +256,125 @@ class BM25:
 # Khởi tạo Flask app
 app = Flask(__name__)
 CORS(app)
+
+@app.route('/get_user_id', methods=['GET'])
+def get_user_id():
+    user_id = f"user_{uuid.uuid4()}"  # Tạo user_id duy nhất
+    return jsonify({'user_id': user_id})
+
 # Tạo endpoint /ask để nhận câu hỏi và trả lời
 @app.route('/ask', methods=['POST'])
 def ask():
     data = request.json
+    print('Received data:', data)
     query = data.get('query', '')
-    if not query:
-        return jsonify({'error': 'No query provided'}), 400
-    response = process_user_query(query)
+    user_id = data.get('user_id', '')
+    if not query or not user_id:
+        print('Error: Missing query or user_id', {'query': query, 'user_id': user_id})
+        return jsonify({'error': 'No query or user_id provided'}), 400
+    
+    # Kiểm tra cache
+    if query in _response_cache:
+        response = _response_cache[query]
+        print('Response from cache:', response)
+    else:
+        # Nếu không có trong cache, xử lý và lưu vào cache
+        response = process_user_query(query, user_id)
+        _response_cache[query] = response
+        print('Response from process_user_query:', response)
+    
+    # Luôn lưu lịch sử vào Redis, bất kể phản hồi từ cache hay không
+    session_key = f"session_history:{user_id}"  # Sửa key ở đây
+    session_data = redis_client.get(session_key)
+    if session_data:
+        session_data = json.loads(session_data)
+    else:
+        session_data = []
+    
+    # Thêm câu hỏi và phản hồi vào lịch sử
+    session_data.append({'question': query, 'answer': response})
+    # Giới hạn số lượng tương tác (nếu cần, ví dụ: 5 tương tác tối đa)
+    if len(session_data) > 5:
+        session_data = session_data[-5:]
+    redis_client.setex(session_key, 3600, json.dumps(session_data))  # TTL 1 giờ
+    
+    print('Updated session history:', session_data)
     return jsonify({'response': response})
 
+@app.route('/get_session_history', methods=['GET'])
+def get_session_history():
+    try:
+        user_id = request.args.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'Missing user_id'}), 400
+        history = redis_client.get(f"session_history:{user_id}")
+        if history:
+            return jsonify({'history': json.loads(history)})
+        return jsonify({'history': []})
+    except Exception as e:
+        app.logger.error(f"Error in /get_session_history: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+    
+@app.route('/set_session_name', methods=['POST'])
+def set_session_name():
+    data = request.json
+    user_id = data.get('user_id')
+    name = data.get('name')
+    if not user_id or not name:
+        return jsonify({'error': 'Missing user_id or name'}), 400
+    redis_client.set(f"session_name:{user_id}", name)
+    return jsonify({'status': 'success'})
+
+@app.route('/get_session_name', methods=['GET'])
+def get_session_name():
+    try:
+        user_id = request.args.get('user_id')
+        app.logger.info(f"Received request for /get_session_name with user_id: {user_id}")
+        if not user_id:
+            app.logger.error("Missing user_id in /get_session_name")
+            return jsonify({'error': 'Missing user_id'}), 400
+        app.logger.info(f"Attempting to get session_name:{user_id} from Redis")
+        name = redis_client.get(f"session_name:{user_id}")
+        app.logger.info(f"Redis response for session_name:{user_id}: {name}")
+        if name:
+            app.logger.info(f"Found session name for {user_id}: {name}")
+            return jsonify({'name': name})  # Sửa ở đây
+        app.logger.info(f"No session name found for {user_id}, returning user_id as name")
+        return jsonify({'name': user_id})
+    except redis.exceptions.AuthenticationError as e:
+        app.logger.error(f"Redis authentication error in /get_session_name: {e}")
+        return jsonify({'error': 'Redis authentication failed'}), 500
+    except redis.exceptions.ConnectionError as e:
+        app.logger.error(f"Redis connection error in /get_session_name: {e}")
+        return jsonify({'error': 'Redis connection failed'}), 500
+    except Exception as e:
+        app.logger.error(f"Unexpected error in /get_session_name: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+          
+@app.route('/clear_session', methods=['POST'])
+def clear_session():
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        app.logger.info(f"Received request for /clear_session with user_id: {user_id}")
+        if not user_id:
+            app.logger.error("Missing user_id in /clear_session")
+            return jsonify({'error': 'Missing user_id'}), 400
+        # Xóa dữ liệu phiên trong Redis
+        redis_client.delete(f"session_history:{user_id}")  # Sửa key ở đây
+        redis_client.delete(f"session_name:{user_id}")
+        app.logger.info(f"Cleared session for user_id: {user_id}")
+        return jsonify({'status': 'success'})
+    except redis.exceptions.AuthenticationError as e:
+        app.logger.error(f"Redis authentication error in /clear_session: {e}")
+        return jsonify({'error': 'Redis authentication failed'}), 500
+    except redis.exceptions.ConnectionError as e:
+        app.logger.error(f"Redis connection error in /clear_session: {e}")
+        return jsonify({'error': 'Redis connection failed'}), 500
+    except Exception as e:
+        app.logger.error(f"Unexpected error in /clear_session: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+    
 # Chạy server
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=1508)

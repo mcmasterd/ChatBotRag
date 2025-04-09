@@ -120,6 +120,7 @@
             flex: 1;
             display: flex;
             flex-direction: column;
+            height: 100vh;
         }
 
         .header {
@@ -164,11 +165,20 @@
         }
 
         .messages-container {
+            height: 100%;
+            /* Chiếm toàn bộ chiều cao của .messages */
+            overflow-y: auto;
+            /* Thanh kéo xuất hiện khi nội dung dài hơn */
+            width: 100%;
+            /* Giữ chiều rộng tối đa */
             max-width: 1280px;
+            /* Giới hạn chiều rộng tối đa nếu cần */
             margin: 0 auto;
+            /* Căn giữa */
             display: flex;
             flex-direction: column;
             gap: 1.5rem;
+            /* Khoảng cách giữa các tin nhắn */
         }
 
         .message {
@@ -316,6 +326,89 @@
         .send-button:hover {
             background-color: #1d4ed8;
         }
+
+        /* Thêm CSS cho phần hiển thị session */
+        .session-info {
+            margin: 10px 0;
+            font-size: 14px;
+            color: #555;
+        }
+
+        #history-container {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+        }
+
+        .session-info select {
+            margin-left: 10px;
+            padding: 5px;
+            border-radius: 5px;
+        }
+
+        .session-info {
+            margin: 10px 0;
+            font-size: 14px;
+            color: #555;
+        }
+
+        #session-list {
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 5px;
+        }
+
+        .session-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 3px;
+            margin-bottom: 2px;
+        }
+
+        .session-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        .session-item.selected {
+            background-color: #e0e0e0;
+        }
+
+        .session-name {
+            flex-grow: 1;
+        }
+
+        .delete-session {
+            background: none;
+            border: none;
+            color: #ff4444;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0 5px;
+        }
+
+        .delete-session:hover {
+            color: #cc0000;
+        }
+
+        .rename-session {
+            background: none;
+            border: none;
+            color: #4a90e2;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0 5px;
+        }
+
+        .rename-session:hover {
+            color: #357abd;
+        }
     </style>
 </head>
 
@@ -372,7 +465,7 @@
                             <li class="contact-value">
                                 <i data-lucide="calendar"
                                     style="width: 1rem; height: 1rem; display: inline; vertical-align: middle; margin-right: 0.5rem;"></i>
-                                Quyết định số 369/QĐ-ĐHCNTT&TT
+                                Quyết định số 365/QĐ-ĐHCNTT&TT
                             </li>
                             <li class="contact-value">
                                 <i data-lucide="globe"
@@ -383,6 +476,13 @@
                     </div>
                 </div>
             </div>
+
+            <div class="session-info">
+                <div id="session-list"></div> <!-- Thay select bằng div -->
+                <button id="new-session">New Conversation</button>
+                <div id="history-container" style="display: none;"></div>
+            </div>
+
         </div>
 
         <!-- Main Chat Area -->
@@ -431,6 +531,8 @@
                 </div>
             </form>
         </div>
+
+
     </div>
 
     <script>
@@ -438,6 +540,66 @@
 
         const messagesContainer = document.getElementById('messages-container');
         const relatedQuestionsContainer = document.getElementById('related-questions');
+
+        let userId;
+        let sessions = JSON.parse(localStorage.getItem('sessions')) || [];
+        let sessionNames = JSON.parse(localStorage.getItem('sessionNames')) || {}; //Lưu trũ phiên tại Client
+
+        async function initializeUserId() {
+            try {
+                if (sessions.length === 0) {
+                    const response = await fetch('/get_user_id');
+                    if (!response.ok) throw new Error(`Lỗi /get_user_id: ${response.status} - ${await response.text()}`);
+                    const data = await response.json();
+                    userId = data.user_id;
+                    sessions.push(userId);
+                    localStorage.setItem('sessions', JSON.stringify(sessions));
+                } else {
+                    userId = sessions[sessions.length - 1];
+                }
+                const nameResponse = await fetch(`/get_session_name?user_id=${userId}`);
+                if (!nameResponse.ok) throw new Error(`Lỗi /get_session_name: ${nameResponse.status} - ${await nameResponse.text()}`);
+                const nameData = await nameResponse.json();
+                sessionNames[userId] = nameData.name;
+                localStorage.setItem('sessionNames', JSON.stringify(sessionNames));
+                return userId;
+            } catch (error) {
+                console.error('Lỗi trong initializeUserId:', error);
+                throw error;
+            }
+        }
+
+        // Hàm mới để tải lịch sử và hiển thị trong #messages-container
+        async function loadSessionHistoryIntoChat() {
+            try {
+                const response = await fetch(`/get_session_history?user_id=${userId}`);
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || 'Không thể lấy lịch sử');
+                }
+                // Xóa các tin nhắn cũ trong #messages-container
+                messagesContainer.innerHTML = '';
+                if (data.history && data.history.length > 0) {
+                    data.history.forEach(item => {
+                        const userMessage = { text: item.question, isBot: false };
+                        const botMessage = { text: item.answer, isBot: true };
+                        messagesContainer.appendChild(createMessageElement(userMessage));
+                        messagesContainer.appendChild(createMessageElement(botMessage));
+                    });
+                } else {
+                    // Hiển thị tin nhắn mặc định nếu không có lịch sử
+                    const initialMessage = { text: 'ICTU xin chào! Tôi có thể giúp bạn trả lời các câu hỏi về học bổng tại trường Đại học Công nghệ Thông tin và Truyền thông. Bạn có thể hỏi về điều kiện, quy trình xét duyệt, mức học bổng và nhiều thông tin khác.', isBot: true };
+                    messagesContainer.appendChild(createMessageElement(initialMessage));
+                }
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                lucide.createIcons();
+            } catch (error) {
+                console.error('Lỗi khi lấy lịch sử:', error);
+                const errorMessage = { text: `Lỗi khi tải lịch sử: ${error.message}`, isBot: true };
+                messagesContainer.appendChild(createMessageElement(errorMessage));
+                lucide.createIcons();
+            }
+        }
 
         // Hàm tạo tin nhắn
         function createMessageElement(message) {
@@ -465,7 +627,7 @@
             return messageDiv;
         }
 
-        // Hàm tạo nút câu hỏi liên quan
+        // Hàm tạo nút câu hỏi liên quan (THIẾU TRONG CODE HIỆN TẠI)
         function createRelatedQuestionButton(question) {
             const button = document.createElement('button');
             button.className = 'related-button';
@@ -484,70 +646,183 @@
             return button;
         }
 
-        // Tin nhắn ban đầu
-        const initialMessages = [
-            {
-                text: 'ICTU xin chào! Tôi có thể giúp bạn trả lời các câu hỏi về học bổng tại trường Đại học Công nghệ Thông tin và Truyền thông. Bạn có thể hỏi về điều kiện, quy trình xét duyệt, mức học bổng và nhiều thông tin khác.',
-                isBot: true
-            }
-        ];
+        // Hàm tạo thông báo "Đang xử lý"
+        function createLoadingMessage() {
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'message bot';
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = 'message-avatar bot-avatar';
+            const icon = document.createElement('i');
+            icon.setAttribute('data-lucide', 'bot');
+            avatarDiv.appendChild(icon);
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            const textDiv = document.createElement('div');
+            textDiv.className = 'message-text';
+            textDiv.textContent = 'Đang xử lý...';
+            contentDiv.appendChild(textDiv);
+            const timerSpan = document.createElement('span');
+            timerSpan.id = 'loading-timer';
+            timerSpan.textContent = ' (0s)';
+            textDiv.appendChild(timerSpan);
+            loadingDiv.appendChild(avatarDiv);
+            loadingDiv.appendChild(contentDiv);
+            return loadingDiv;
+        }
 
-        // Câu hỏi liên quan
-        const relatedQuestions = [
-            'Điều kiện để được xét học bổng khuyến khích học tập là gì?',
-            'Muốn được cấp học bổng khuyến khích học tập thì cần những yêu cầu gì?',
-            'Học bổng khuyến khích học tập là gì?'
-        ];
+        function startTimer(loadingElement) {
+            let seconds = 0;
+            const timer = setInterval(() => {
+                seconds++;
+                const timerSpan = loadingElement.querySelector('#loading-timer');
+                if (timerSpan) timerSpan.textContent = ` (${seconds}s)`;
+            }, 1000);
+            return timer;
+        }
 
-        // Thêm tin nhắn ban đầu
-        initialMessages.forEach(message => {
-            messagesContainer.appendChild(createMessageElement(message));
-        });
-
-        // Thêm câu hỏi liên quan
-        relatedQuestions.forEach(question => {
-            relatedQuestionsContainer.appendChild(createRelatedQuestionButton(question));
-        });
-
-        // Xử lý khi gửi form
-        document.getElementById('chat-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const input = document.getElementById('message-input');
-            const message = input.value.trim();
-            if (message) {
-                // Hiển thị tin nhắn người dùng
-                const userMessage = { text: message, isBot: false };
-                messagesContainer.appendChild(createMessageElement(userMessage));
-                input.value = '';
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-                // Gửi yêu cầu đến API
-                try {
-                    const response = await fetch('/ask', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ query: message })
-                    });
-                    const data = await response.json();
-                    const botMessage = { text: data.response, isBot: true };
-                    messagesContainer.appendChild(createMessageElement(botMessage));
-                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                    // Khởi tạo lại Lucide icons cho phần tử mới
-                    lucide.createIcons();
-                } catch (error) {
-                    console.error('Error:', error);
-                    const errorMessage = { text: 'Có lỗi xảy ra khi gửi câu hỏi!', isBot: true };
-                    messagesContainer.appendChild(createMessageElement(errorMessage));
-                    // Khởi tạo lại Lucide icons cho phần tử mới
-                    lucide.createIcons();
+        function updateSessionList() {
+            const sessionList = document.getElementById('session-list');
+            sessionList.innerHTML = '';
+            sessions.forEach(sessionId => {
+                const displayName = sessionNames[sessionId] || sessionId;
+                const sessionItem = document.createElement('div');
+                sessionItem.className = 'session-item';
+                if (sessionId === userId) {
+                    sessionItem.classList.add('selected');
                 }
-            }
-        });
+                const sessionName = document.createElement('span');
+                sessionName.className = 'session-name';
+                sessionName.textContent = displayName;
+                sessionName.addEventListener('click', () => {
+                    userId = sessionId;
+                    updateSessionList();
+                    loadSessionHistoryIntoChat();
+                });
+                const renameButton = document.createElement('button');
+                renameButton.className = 'rename-session';
+                renameButton.textContent = '✎';
+                renameButton.addEventListener('click', async () => {
+                    const newName = prompt('Nhập tên mới cho phiên:', displayName);
+                    if (newName) {
+                        await fetch('/set_session_name', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ user_id: sessionId, name: newName })
+                        });
+                        sessionNames[sessionId] = newName;
+                        localStorage.setItem('sessionNames', JSON.stringify(sessionNames));
+                        updateSessionList();
+                    }
+                });
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'delete-session';
+                deleteButton.textContent = 'X';
+                deleteButton.addEventListener('click', async () => {
+                    if (confirm(`Bạn có chắc chắn muốn xóa phiên ${displayName}?`)) {
+                        await fetch('/clear_session', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ user_id: sessionId })
+                        });
+                        sessions = sessions.filter(id => id !== sessionId);
+                        delete sessionNames[sessionId];
+                        localStorage.setItem('sessions', JSON.stringify(sessions));
+                        localStorage.setItem('sessionNames', JSON.stringify(sessionNames));
+                        if (userId === sessionId) {
+                            userId = sessions[0] || (await fetch('/get_user_id').then(res => res.json())).user_id;
+                            if (!sessions.includes(userId)) {
+                                sessions.push(userId);
+                                localStorage.setItem('sessions', JSON.stringify(sessions));
+                            }
+                        }
+                        updateSessionList();
+                    }
+                });
+                sessionItem.appendChild(sessionName);
+                sessionItem.appendChild(renameButton);
+                sessionItem.appendChild(deleteButton);
+                sessionList.appendChild(sessionItem);
+            });
+        }
 
-        // Khởi tạo Lucide icons
-        lucide.createIcons();
+        // Chờ userId trước khi thêm sự kiện
+        initializeUserId().then(() => {
+            updateSessionList();
+
+            document.getElementById('new-session').addEventListener('click', async () => {
+                try {
+                    const response = await fetch('/get_user_id');
+                    const data = await response.json();
+                    userId = data.user_id;
+                    sessions.push(userId);
+                    localStorage.setItem('sessions', JSON.stringify(sessions));
+                    updateSessionList();
+                    // Tải lịch sử của phiên mới (sẽ là rỗng vì phiên mới)
+                    loadSessionHistoryIntoChat();
+                } catch (error) {
+                    console.error('Lỗi khi tạo phiên mới:', error);
+                }
+            });
+
+            document.getElementById('chat-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const input = document.getElementById('message-input');
+                const message = input.value.trim();
+                if (message) {
+                    const userMessage = { text: message, isBot: false };
+                    messagesContainer.appendChild(createMessageElement(userMessage));
+                    input.value = '';
+
+                    const loadingMessage = createLoadingMessage();
+                    messagesContainer.appendChild(loadingMessage);
+                    const timer = startTimer(loadingMessage);
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+                    console.log('Sending to /ask:', { query: message, user_id: userId });
+
+                    try {
+                        const response = await fetch('/ask', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ query: message, user_id: userId })
+                        });
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(`Server error: ${data.error || 'Unknown error'}`);
+                        }
+                        clearInterval(timer);
+                        messagesContainer.removeChild(loadingMessage);
+                        const botMessage = { text: data.response, isBot: true };
+                        messagesContainer.appendChild(createMessageElement(botMessage));
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                        lucide.createIcons();
+                    } catch (error) {
+                        console.error('Lỗi khi khởi tạo userId:', error);
+                        const errorMessage = { text: 'Không thể khởi tạo phiên làm việc. Vui lòng thử lại sau.', isBot: true };
+                        messagesContainer.appendChild(createMessageElement(errorMessage));
+                        lucide.createIcons();
+                    }
+                }
+            });
+
+            const initialMessages = [
+                { text: 'ICTU xin chào! Tôi có thể giúp bạn trả lời các câu hỏi về học bổng tại trường Đại học Công nghệ Thông tin và Truyền thông. Bạn có thể hỏi về điều kiện, quy trình xét duyệt, mức học bổng và nhiều thông tin khác.', isBot: true }
+            ];
+            const relatedQuestions = [
+                'Điều kiện để được xét học bổng khuyến khích học tập là gì?',
+                'Muốn được cấp học bổng khuyến khích học tập thì cần những yêu cầu gì?',
+                'Học bổng khuyến khích học tập là gì?'
+            ];
+
+            initialMessages.forEach(message => messagesContainer.appendChild(createMessageElement(message)));
+            relatedQuestions.forEach(question => relatedQuestionsContainer.appendChild(createRelatedQuestionButton(question)));
+            lucide.createIcons();
+        }).catch(error => {
+            console.error('Lỗi khi khởi tạo userId:', error);
+            const errorMessage = { text: 'Không thể khởi tạo phiên làm việc. Vui lòng thử lại sau.', isBot: true };
+            messagesContainer.appendChild(createMessageElement(errorMessage));
+            lucide.createIcons();
+        });
     </script>
 </body>
 
