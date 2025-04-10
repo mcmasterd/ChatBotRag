@@ -12,6 +12,7 @@ from flask_cors import CORS
 import redis
 import json
 import uuid
+import requests
 
 # Load environment variables and initialize clients
 load_dotenv()
@@ -19,20 +20,69 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE_DIR = os.path.dirname(CURRENT_DIR)
 CHROMA_PATH = os.path.join(BASE_DIR, "chroma_db")
 
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-BASE_DIR = os.path.dirname(CURRENT_DIR)
-CHROMA_PATH = os.path.join(BASE_DIR, "chroma_db")
-
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 chroma_client = chromadb.PersistentClient(path=CHROMA_PATH)
 redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True, password='terminator')
-embedding_function = chromadb.utils.embedding_functions.OpenAIEmbeddingFunction(
-    api_key=os.getenv('OPENAI_API_KEY'),
-    model_name="text-embedding-3-small"
-)
+
+# Định nghĩa Local Embedding Function
+class LocalEmbeddingFunction:
+    def __init__(self, timeout=30):
+        self.timeout = timeout
+        
+    def __call__(self, input: List[str]) -> List[List[float]]:
+        try:
+            response = requests.post(
+                "http://192.168.1.131:8000/embed", 
+                json={"texts": input},
+                timeout=self.timeout
+            )
+            response.raise_for_status()
+            result = response.json()
+            
+            # Kiểm tra định dạng đặc biệt: API có thể trả về dạng phẳng (768 số)
+            # thay vì dạng mảng 2 chiều (mảng của các mảng 768 phần tử)
+            if isinstance(result, list) and len(result) > 0:
+                # Trường hợp đặc biệt: nếu số phần tử là bội số của 768 và tất cả đều là số
+                # thì đây có thể là dạng phẳng của vector
+                if (len(result) % 768 == 0 and 
+                    all(isinstance(x, (int, float)) for x in result) and
+                    len(input) == len(result) // 768):
+                    
+                    print(f"Phát hiện định dạng phẳng của vector! Chuyển đổi...")
+                    # Chuyển đổi từ dạng phẳng sang dạng mảng 2 chiều
+                    reshaped_result = []
+                    for i in range(0, len(result), 768):
+                        reshaped_result.append(result[i:i+768])
+                    result = reshaped_result
+                    print(f"Đã chuyển đổi thành {len(result)} vector, mỗi vector có {len(result[0]) if result else 0} chiều")
+                
+                # Kiểm tra từng embedding
+                for i, embedding in enumerate(result):
+                    # Nếu là float (lỗi), chuyển đổi thành list
+                    if isinstance(embedding, (int, float)):
+                        print(f"Lỗi: embedding thứ {i} là số, không phải list")
+                        result[i] = [0.0] * 768
+                    # Nếu là list rỗng, thay thế bằng vector 0
+                    elif not embedding or len(embedding) == 0:
+                        print(f"Lỗi: embedding thứ {i} là list rỗng")
+                        result[i] = [0.0] * 768
+            else:
+                print(f"Lỗi định dạng embedding: Kết quả không phải danh sách hoặc rỗng")
+                return [[0.0] * 768 for _ in input]  # Vector 768 chiều
+            
+            return result
+        except requests.exceptions.RequestException as e:
+            print(f"Lỗi khi gọi API embedding: {str(e)}")
+            return [[0.0] * 768 for _ in input]  # Vector 768 chiều
+        except Exception as e:
+            print(f"Lỗi không xác định khi xử lý embedding: {str(e)}")
+            return [[0.0] * 768 for _ in input]  # Vector 768 chiều
+
+# Sử dụng Local Embedding Function
+embedding_function = LocalEmbeddingFunction()
 
 try:
-    collection = chroma_client.get_collection(name="scholarship-qa", embedding_function=embedding_function)
+    collection = chroma_client.get_collection(name="scholarship_documents", embedding_function=embedding_function)
 except chromadb.errors.InvalidCollectionException:
     print("Collection 'scholarship-qa' does not exist. Creating new collection...")
     collection = chroma_client.create_collection(name="scholarship-qa", embedding_function=embedding_function)
