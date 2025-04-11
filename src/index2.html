@@ -409,6 +409,173 @@
         .rename-session:hover {
             color: #357abd;
         }
+
+        /* Rating Styles */
+        .rating-buttons {
+            display: flex;
+            gap: 0.3rem;
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid #374151;
+            align-items: center;
+            transition: all 0.3s ease;
+            height: auto;
+            opacity: 0.5;
+        }
+
+        .message-content:hover .rating-buttons,
+        .rating-buttons.active {
+            opacity: 1;
+        }
+
+        .rating-buttons.submitted {
+            opacity: 0.5;
+        }
+
+        .rating-buttons.submitted:hover {
+            opacity: 1;
+        }
+
+        .rating-comment {
+            display: none;
+            flex: 1;
+            gap: 0.3rem;
+            margin-left: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .message-content:hover .rating-comment:not(.submitted),
+        .rating-comment.active:not(.submitted) {
+            display: flex;
+        }
+
+        .rating-button {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            opacity: 0.5;
+        }
+
+        .rating-buttons.submitted .rating-button {
+            display: none;
+        }
+
+        .rating-buttons.submitted .rating-button.selected {
+            display: flex;
+            opacity: 1;
+        }
+
+        /* Additional styles */
+        .rating-button.selected {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        .rating-good {
+            background-color: rgba(34, 197, 94, 0.1);
+            color: #4ade80;
+            border-color: #4ade80;
+        }
+
+        .rating-good:hover {
+            background-color: rgba(34, 197, 94, 0.2);
+        }
+
+        .rating-fair {
+            background-color: rgba(234, 179, 8, 0.1);
+            color: #eab308;
+            border-color: #eab308;
+        }
+
+        .rating-fair:hover {
+            background-color: rgba(234, 179, 8, 0.2);
+        }
+
+        .rating-poor {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border-color: #ef4444;
+        }
+
+        .rating-poor:hover {
+            background-color: rgba(239, 68, 68, 0.2);
+        }
+
+        .rating-comment-input {
+            flex: 1;
+            background-color: #1a1f2e;
+            border: 1px solid #374151;
+            color: #f3f4f6;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            resize: none;
+            height: 24px;
+            max-height: 100px;
+        }
+
+        .rating-comment-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .rating-submit {
+            background-color: #2563eb;
+            border: none;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .rating-submit:hover {
+            background-color: #1d4ed8;
+        }
+
+        .rating-feedback {
+            font-size: 0.65rem;
+            color: #9ca3af;
+            margin-top: 0.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .rating-feedback-text {
+            flex: 1;
+        }
+
+        .rating-button:hover {
+            transform: translateY(-1px);
+        }
+
+        .rating-button:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 4px 8px;
+            background-color: #1a1f2e;
+            color: #f3f4f6;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            z-index: 1000;
+            border: 1px solid #374151;
+        }
     </style>
 </head>
 
@@ -621,11 +788,199 @@
             textDiv.textContent = message.text;
 
             contentDiv.appendChild(textDiv);
+
+            // Add rating buttons for bot messages
+            if (message.isBot) {
+                const ratingDiv = document.createElement('div');
+                ratingDiv.className = 'rating-buttons';
+
+                const goodButton = createRatingButton('Đạt', 'rating-good', 'thumbs-up');
+                const fairButton = createRatingButton('Tạm', 'rating-fair', 'meh');
+                const poorButton = createRatingButton('Không đạt', 'rating-poor', 'thumbs-down');
+
+                const commentDiv = document.createElement('div');
+                commentDiv.className = 'rating-comment';
+
+                const commentInput = document.createElement('textarea');
+                commentInput.className = 'rating-comment-input';
+                commentInput.placeholder = 'Nhập đánh giá của bạn...';
+                commentInput.rows = 1;
+
+                const submitButton = document.createElement('button');
+                submitButton.className = 'rating-submit';
+                submitButton.disabled = true;
+                const submitIcon = document.createElement('i');
+                submitIcon.setAttribute('data-lucide', 'send');
+                submitButton.appendChild(submitIcon);
+
+                commentDiv.appendChild(commentInput);
+                commentDiv.appendChild(submitButton);
+
+                ratingDiv.appendChild(goodButton);
+                ratingDiv.appendChild(fairButton);
+                ratingDiv.appendChild(poorButton);
+                ratingDiv.appendChild(commentDiv);
+
+                contentDiv.appendChild(ratingDiv);
+
+                // Add hover effect to show rating buttons
+                contentDiv.addEventListener('mouseenter', () => {
+                    ratingDiv.classList.add('active');
+                });
+
+                contentDiv.addEventListener('mouseleave', () => {
+                    if (!ratingDiv.querySelector('.rating-feedback')) {
+                        ratingDiv.classList.remove('active');
+                    }
+                });
+            }
+
             messageDiv.appendChild(avatarDiv);
             messageDiv.appendChild(contentDiv);
 
             return messageDiv;
         }
+
+        function createRatingButton(text, className, iconName) {
+            const button = document.createElement('button');
+            button.className = `rating-button ${className}`;
+            button.setAttribute('data-tooltip', text);
+
+            const icon = document.createElement('i');
+            icon.setAttribute('data-lucide', iconName);
+            button.appendChild(icon);
+
+            button.addEventListener('click', () => {
+                const messageDiv = button.closest('.message');
+                const ratingDiv = messageDiv.querySelector('.rating-buttons');
+                const commentDiv = messageDiv.querySelector('.rating-comment');
+
+                // Make sure rating stays visible
+                ratingDiv.classList.add('active');
+                commentDiv.classList.add('active');
+
+                const rating = text;
+
+                // Remove highlight from all buttons
+                const buttons = messageDiv.querySelectorAll('.rating-button');
+                buttons.forEach(btn => {
+                    btn.disabled = false;
+                    btn.style.opacity = '';
+                    btn.style.transform = '';
+                    btn.classList.remove('selected');
+                });
+
+                // Highlight selected button
+                button.classList.add('selected');
+
+                // Store selected rating in a data attribute for later use
+                ratingDiv.setAttribute('data-selected-rating', rating);
+
+                // Enable submit button
+                const submitButton = messageDiv.querySelector('.rating-submit');
+                submitButton.disabled = false;
+            });
+
+            return button;
+        }
+
+        // Add this function to handle comment submission
+        function handleRatingSubmit(messageDiv) {
+            const ratingDiv = messageDiv.querySelector('.rating-buttons');
+            const commentDiv = messageDiv.querySelector('.rating-comment');
+            const rating = ratingDiv.getAttribute('data-selected-rating');
+
+            if (!rating) return; // No rating selected
+
+            const commentInput = messageDiv.querySelector('.rating-comment-input');
+            const comment = commentInput.value.trim();
+
+            // Mark as submitted to change display behavior
+            ratingDiv.classList.remove('active');
+            ratingDiv.classList.add('submitted');
+            commentDiv.classList.remove('active');
+            commentDiv.classList.add('submitted');
+
+            // Only disable inputs after submit
+            const buttons = messageDiv.querySelectorAll('.rating-button');
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                if (!btn.classList.contains('selected')) {
+                    btn.style.display = 'none';
+                }
+            });
+
+            commentInput.disabled = true;
+            const submitButton = messageDiv.querySelector('.rating-submit');
+            submitButton.disabled = true;
+            submitButton.style.display = 'none';
+
+            // Add feedback text
+            const feedbackDiv = document.createElement('div');
+            feedbackDiv.className = 'rating-feedback';
+
+            const feedbackText = document.createElement('div');
+            feedbackText.className = 'rating-feedback-text';
+            feedbackText.textContent = `Đã đánh giá: ${rating}${comment ? ` - ${comment}` : ''}`;
+
+            const feedbackIcon = document.createElement('i');
+            feedbackIcon.setAttribute('data-lucide', 'check-circle');
+            feedbackIcon.style.color = '#4ade80';
+
+            feedbackDiv.appendChild(feedbackIcon);
+            feedbackDiv.appendChild(feedbackText);
+
+            // Remove any existing feedback
+            const existingFeedback = messageDiv.querySelector('.rating-feedback');
+            if (existingFeedback) {
+                existingFeedback.remove();
+            }
+
+            messageDiv.querySelector('.rating-buttons').appendChild(feedbackDiv);
+            lucide.createIcons(feedbackDiv);
+
+            // Send rating to server
+            sendRatingToServer(messageDiv, rating, comment);
+        }
+
+        // Function to handle click outside the rating area
+        document.addEventListener('click', (e) => {
+            // If clicked on submit button, don't hide the rating
+            if (e.target.closest('.rating-submit')) {
+                return;
+            }
+
+            // Check if click is outside a rating area
+            if (!e.target.closest('.rating-buttons') && !e.target.closest('.rating-comment')) {
+                // Get all active rating sections
+                const activeRatings = document.querySelectorAll('.rating-buttons.active');
+                const activeComments = document.querySelectorAll('.rating-comment.active');
+
+                activeRatings.forEach(rating => {
+                    const commentDiv = rating.closest('.message-content').querySelector('.rating-comment');
+                    const commentInput = commentDiv.querySelector('.rating-comment-input');
+
+                    // Only hide if comment input is empty
+                    if (!commentInput.value.trim()) {
+                        rating.classList.remove('active');
+                        commentDiv.classList.remove('active');
+                    }
+                });
+            }
+        });
+
+        // Add event listener for the textarea to keep rating visible
+        document.addEventListener('focusin', (e) => {
+            if (e.target.classList.contains('rating-comment-input')) {
+                const messageDiv = e.target.closest('.message');
+                const ratingDiv = messageDiv.querySelector('.rating-buttons');
+                const commentDiv = messageDiv.querySelector('.rating-comment');
+
+                // Make sure rating stays visible
+                ratingDiv.classList.add('active');
+                commentDiv.classList.add('active');
+            }
+        });
 
         // Hàm tạo nút câu hỏi liên quan (THIẾU TRONG CODE HIỆN TẠI)
         function createRelatedQuestionButton(question) {
@@ -702,7 +1057,7 @@
                 renameButton.className = 'rename-session';
                 renameButton.textContent = '✎';
                 renameButton.addEventListener('click', async () => {
-                    const newName = prompt('Nhập tên mới cho phiên:', displayName);
+                    const newName = prompt('Nhập tên mới cho cuộc trò truyện:', displayName);
                     if (newName) {
                         await fetch('/set_session_name', {
                             method: 'POST',
@@ -822,6 +1177,50 @@
             const errorMessage = { text: 'Không thể khởi tạo phiên làm việc. Vui lòng thử lại sau.', isBot: true };
             messagesContainer.appendChild(createMessageElement(errorMessage));
             lucide.createIcons();
+        });
+
+        async function sendRatingToServer(messageDiv, rating, comment) {
+            try {
+                const response = await fetch('/rate_response', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        rating: rating,
+                        comment: comment,
+                        question: messageDiv.previousElementSibling?.querySelector('.message-text')?.textContent || '',
+                        answer: messageDiv.querySelector('.message-text').textContent
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to save rating');
+                }
+            } catch (error) {
+                console.error('Error saving rating:', error);
+                const feedbackDiv = messageDiv.querySelector('.rating-feedback');
+                if (feedbackDiv) {
+                    feedbackDiv.querySelector('.rating-feedback-text').textContent = 'Lỗi khi lưu đánh giá';
+                }
+            }
+        }
+
+        // Add auto-resize for comment textarea
+        document.addEventListener('input', (e) => {
+            if (e.target.classList.contains('rating-comment-input')) {
+                e.target.style.height = 'auto';
+                e.target.style.height = (e.target.scrollHeight) + 'px';
+            }
+        });
+
+        // Add event listener for submit buttons
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.rating-submit')) {
+                const messageDiv = e.target.closest('.message');
+                handleRatingSubmit(messageDiv);
+            }
         });
     </script>
 </body>

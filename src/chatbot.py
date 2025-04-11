@@ -13,12 +13,160 @@ import redis
 import json
 import uuid
 import requests
+import csv
+import datetime
+from pathlib import Path
+from zoneinfo import ZoneInfo
+
 
 # Load environment variables and initialize clients
 load_dotenv()
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE_DIR = os.path.dirname(CURRENT_DIR)
 CHROMA_PATH = os.path.join(BASE_DIR, "chroma_db")
+LOGS_DIR = os.path.join(BASE_DIR, "logs")
+
+# Đảm bảo thư mục logs tồn tại
+Path(LOGS_DIR).mkdir(exist_ok=True)
+
+# Tệp log cho câu hỏi và câu trả lời
+QA_LOG_FILE = os.path.join(LOGS_DIR, "qa_log.csv")
+
+# Tạo file CSV log nếu chưa tồn tại
+def init_qa_log_file():
+    if not os.path.exists(QA_LOG_FILE):
+        with open(QA_LOG_FILE, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                'Conversation_ID',
+                'User_ID', 
+                'Session_Name', 
+                'Question', 
+                'Answer', 
+                'Timestamp',
+                'Processing_Time',
+                'Rating',
+                'Feedback'
+            ])
+
+# Hàm log câu hỏi và câu trả lời
+def log_qa(user_id, question, answer, processing_time=None, sources=None, rating=None, comment=None):
+    try:
+        # Lấy tên phiên nếu có
+        session_name = ""
+        try:
+            session_name_data = redis_client.get(f"session_name:{user_id}")
+            if session_name_data:
+                session_name = session_name_data
+        except:
+            pass
+        
+        # Lấy timestamp hiện tại
+        # Lấy múi giờ Hà Nội
+        tz = ZoneInfo("Asia/Ho_Chi_Minh")
+
+        # Lấy thời gian hiện tại theo múi giờ
+        now = datetime.datetime.now(tz)
+
+        # Format thời gian để lưu
+        timestamp = now.strftime("%d-%m-%Y %H:%M:%S")
+
+        # Tạo conversation_id dùng cùng thời điểm
+        conversation_id = f"{user_id}_{now.strftime('%d%m%Y%H%M%S')}"
+        
+        # Chuẩn bị dữ liệu để ghi
+        row = [
+            conversation_id,
+            user_id,
+            session_name,
+            question,
+            answer,
+            timestamp,
+            f"{processing_time:.2f}" if processing_time else "",
+            rating or "",
+            comment or ""
+        ]
+        
+        # Ghi vào file CSV
+        with open(QA_LOG_FILE, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow(row)
+            
+        print(f"Logged Q&A for user {user_id}")
+        return True
+    except Exception as e:
+        print(f"Error logging Q&A: {str(e)}")
+        return False
+
+# Hàm cập nhật đánh giá cho câu trả lời trước đó
+def update_rating(user_id, question, answer, rating, comment=None):
+    try:
+        # Đọc file log hiện tại
+        rows = []
+        found = False
+        
+        # Chuẩn hóa dữ liệu đầu vào
+        question_cleaned = question.strip() if question else ""
+        answer_cleaned = answer.strip() if answer else ""
+        
+        # In thông tin để debug
+        print(f"Looking for rating match with user_id={user_id}, question={question_cleaned[:30]}...")
+        
+        if os.path.exists(QA_LOG_FILE):
+            with open(QA_LOG_FILE, 'r', newline='', encoding='utf-8') as f:
+                reader = csv.reader(f)
+                header = next(reader)  # Lấy header
+                
+                for row in reader:
+                    if len(row) < 9:  # Đảm bảo có đủ cột
+                        rows.append(row)
+                        continue
+                    
+                    # Lấy dữ liệu từ bản ghi
+                    row_user_id = row[1].strip() if len(row) > 1 else ""
+                    row_question = row[3].strip() if len(row) > 3 else ""
+                    row_answer = row[4].strip() if len(row) > 4 else ""
+                    
+                    # Debug để xem các giá trị
+                    if row_user_id == user_id and row_question == question_cleaned:
+                        print(f"  Found user+question match. Checking answer...")
+                        print(f"  Expected answer: {answer_cleaned[:30]}...")
+                        print(f"  Found answer: {row_answer[:30]}...")
+                    
+                    # So sánh chính xác cả ba giá trị
+                    if (row_user_id == user_id and 
+                        row_question == question_cleaned and 
+                        row_answer == answer_cleaned):
+                        # Nếu tìm thấy, cập nhật đánh giá và bình luận
+                        row[7] = rating  # Rating
+                        row[8] = comment or ""  # Feedback
+                        found = True
+                        print(f"Found matching Q&A for rating update!")
+                    
+                    rows.append(row)
+        
+        if found:
+            # Ghi lại toàn bộ file với dữ liệu đã cập nhật
+            with open(QA_LOG_FILE, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerow(header)
+                writer.writerows(rows)
+            print(f"Updated rating for Q&A from user {user_id}")
+            return True
+        else:
+            # Nếu không tìm thấy, log một bản ghi mới với đánh giá
+            print(f"No matching record found, creating new entry")
+            log_qa(user_id, question_cleaned, answer_cleaned, None, None, rating, comment)
+            return True
+            
+    except Exception as e:
+        print(f"Error updating rating: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+# Khởi tạo file log
+init_qa_log_file()
 
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 chroma_client = chromadb.PersistentClient(path=CHROMA_PATH)
@@ -200,12 +348,6 @@ def get_relevant_content(query: str, use_categories: bool = False, final_results
         print(f"Error during retrieval: {str(e)}")
         return []
 
-def extract_source_info(text: str) -> str:
-    """Extract document references from text with simplified pattern"""
-    pattern = r'(?:Nghị định|Quyết định|Thông tư|Văn bản|NĐ|QĐ|TT|CV)(?:\s*số\s*)?([\d\/\-]+[\w\-]*)'
-    matches = set(re.findall(pattern, text, re.IGNORECASE))
-    return ", ".join(f"Văn bản {m}" for m in matches) if matches else ""
-
 def create_prompt(query: str, content: List[Dict]) -> str:
     """Create optimized prompt from retrieved content"""
     context_items = []
@@ -251,7 +393,7 @@ def get_llm_response(prompt: str) -> str:
         messages=[
             {"role": "system", "content": 
              "Bạn là trợ lý tư vấn thông tin chuyên nghiệp. "
-             "Chỉ sử dụng thông tin được cung cấp làm tri thức để trả lời"
+             "Chỉ sử dụng thông tin hiện có làm tri thức để trả lời"
              "Trả lời đúng trọng tâm câu hỏi. Hãy ngắn gọn và chính xác, có thể thay đổi theo yêu cầu câu hỏi nếu có "
              "Không đưa ra các thông tin câu hỏi không yêu cầu. "
              "Sử dụng định dạng rõ ràng với các điểm chính dưới dạng danh sách. Loại bỏ các ký hiệu markdown. "
@@ -276,8 +418,12 @@ def process_user_query(query: str, user_id: str) -> str:
         
         if normalized_query in _response_cache:
             print(f"Cache hit for query: '{normalized_query}'")
-            print(f"Response time: {time.time() - start:.2f}s")
-            return _response_cache[normalized_query]
+            response = _response_cache[normalized_query]
+            processing_time = time.time() - start
+            # Log từ cache
+            log_qa(user_id, query, response, processing_time)
+            print(f"Response time: {processing_time:.2f}s")
+            return response
         
         # Lấy session từ Redis
         session_key = f"session:{user_id}"
@@ -299,6 +445,17 @@ def process_user_query(query: str, user_id: str) -> str:
             print("Insufficient results with categories, falling back to pure vector search")
             relevant_content = get_relevant_content(query, use_categories=False, final_results=5)
         
+        # Trích xuất nguồn tài liệu
+        sources = []
+        for item in relevant_content:
+            metadata = item.get('metadata', {})
+            if metadata.get('source'):
+                sources.append(metadata['source'])
+            elif metadata.get('doc_id'):
+                sources.append(metadata['doc_id'])
+        sources_str = ", ".join(set(sources))
+        print(f"Sources: {sources_str}")
+        
         base_prompt = create_prompt(query, relevant_content)
         prompt_with_context = f"Lịch sử trò chuyện:\n{context}\n\n{base_prompt}" if context else base_prompt
         
@@ -313,11 +470,18 @@ def process_user_query(query: str, user_id: str) -> str:
             _response_cache.pop(next(iter(_response_cache)))
         _response_cache[normalized_query] = response
         
-        print(f"Total response time: {time.time() - start:.2f}s\n")
+        processing_time = time.time() - start
+        # Log câu hỏi và câu trả lời
+        log_qa(user_id, query, response, processing_time)
+        
+        print(f"Total response time: {processing_time:.2f}s\n")
         return response
     except Exception as e:
         print(f"Error processing query: {str(e)}")
-        return f"Xin lỗi, đã có lỗi xảy ra: {str(e)}"
+        error_msg = f"Xin lỗi, đã có lỗi xảy ra: {str(e)}"
+        # Log lỗi
+        log_qa(user_id, query, error_msg)
+        return error_msg
 
 class BM25:
     """BM25 scoring algorithm for reranking search results"""
@@ -363,7 +527,7 @@ class BM25:
 
 # Khởi tạo Flask app
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 @app.route('/get_user_id', methods=['GET'])
 def get_user_id():
@@ -437,27 +601,47 @@ def set_session_name():
 def get_session_name():
     try:
         user_id = request.args.get('user_id')
-        app.logger.info(f"Received request for /get_session_name with user_id: {user_id}")
+        print(f"Received request for /get_session_name with user_id: {user_id}")
+        
         if not user_id:
-            app.logger.error("Missing user_id in /get_session_name")
+            print("Missing user_id in /get_session_name")
             return jsonify({'error': 'Missing user_id'}), 400
-        app.logger.info(f"Attempting to get session_name:{user_id} from Redis")
-        name = redis_client.get(f"session_name:{user_id}")
-        app.logger.info(f"Redis response for session_name:{user_id}: {name}")
-        if name:
-            app.logger.info(f"Found session name for {user_id}: {name}")
-            return jsonify({'name': name})  # Sửa ở đây
-        app.logger.info(f"No session name found for {user_id}, returning user_id as name")
-        return jsonify({'name': user_id})
-    except redis.exceptions.AuthenticationError as e:
-        app.logger.error(f"Redis authentication error in /get_session_name: {e}")
-        return jsonify({'error': 'Redis authentication failed'}), 500
-    except redis.exceptions.ConnectionError as e:
-        app.logger.error(f"Redis connection error in /get_session_name: {e}")
-        return jsonify({'error': 'Redis connection failed'}), 500
+        
+        print(f"Attempting to get session_name:{user_id} from Redis")
+        
+        try:
+            # Test Redis connection first
+            redis_client.ping()
+            print("Redis connection successful")
+            
+            # Get session name with timeout
+            name = redis_client.get(f"session_name:{user_id}")
+            print(f"Redis response for session_name:{user_id}: {name}")
+            
+            if name:
+                print(f"Found session name for {user_id}: {name}")
+                return jsonify({'name': name})
+                
+            print(f"No session name found for {user_id}, returning user_id as name")
+            return jsonify({'name': user_id})
+            
+        except redis.exceptions.TimeoutError as e:
+            print(f"Redis timeout error in /get_session_name: {e}")
+            # Return user_id as fallback
+            return jsonify({'name': user_id, 'note': 'Using fallback due to Redis timeout'})
+            
+        except redis.exceptions.AuthenticationError as e:
+            print(f"Redis authentication error in /get_session_name: {e}")
+            return jsonify({'name': user_id, 'note': 'Using fallback due to Redis auth error'})
+            
+        except redis.exceptions.ConnectionError as e:
+            print(f"Redis connection error in /get_session_name: {e}")
+            return jsonify({'name': user_id, 'note': 'Using fallback due to Redis connection error'})
+            
     except Exception as e:
-        app.logger.error(f"Unexpected error in /get_session_name: {e}")
-        return jsonify({'error': 'Internal server error'}), 500
+        print(f"Unexpected error in /get_session_name: {e}")
+        # Always return a valid response even on error
+        return jsonify({'name': user_id if user_id else 'unknown', 'error': str(e)})
           
 @app.route('/clear_session', methods=['POST'])
 def clear_session():
@@ -483,6 +667,43 @@ def clear_session():
         app.logger.error(f"Unexpected error in /clear_session: {e}")
         return jsonify({'error': 'Internal server error'}), 500
     
+# Endpoint để xử lý đánh giá từ người dùng
+@app.route('/rate_response', methods=['POST', 'OPTIONS'])
+def rate_response():
+    try:
+        # Xử lý OPTIONS request cho CORS
+        if request.method == 'OPTIONS':
+            response = jsonify({'status': 'success'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+            return response
+            
+        data = request.json
+        user_id = data.get('user_id')
+        rating = data.get('rating')
+        comment = data.get('comment', '')
+        question = data.get('question', '')
+        answer = data.get('answer', '')
+        
+        print(f"Received rating request: {rating} from user {user_id}")
+        print(f"Question: {question[:30]}... Answer: {answer[:30]}...")
+        
+        if not user_id or not rating:
+            return jsonify({'error': 'Missing required data'}), 400
+            
+        # Cập nhật đánh giá trong file log
+        success = update_rating(user_id, question, answer, rating, comment)
+        
+        if success:
+            return jsonify({'status': 'success'})
+        else:
+            return jsonify({'error': 'Failed to save rating'}), 500
+            
+    except Exception as e:
+        print(f"Error in /rate_response: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+        
 # Chạy server
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=1508)
