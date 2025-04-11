@@ -32,6 +32,8 @@ Path(LOGS_DIR).mkdir(exist_ok=True)
 # Tệp log cho câu hỏi và câu trả lời
 QA_LOG_FILE = os.path.join(LOGS_DIR, "qa_log.csv")
 
+WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwrglF-ksDh18ufr9GZRUY2-5ZK6PBSnNuONrouDrxMk65IVYf712QWlVhOhZZRwGBj6A/exec"
+
 # Tạo file CSV log nếu chưa tồn tại
 def init_qa_log_file():
     if not os.path.exists(QA_LOG_FILE):
@@ -48,6 +50,53 @@ def init_qa_log_file():
                 'Rating',
                 'Feedback'
             ])
+
+# Khởi tạo file log
+# init_qa_log_file()
+
+# Hàm helper đẩy payload lên Google Sheets qua Webhook
+def push_rating_webhook(user_id, question, answer, rating, comment):
+    # 1. Lấy giờ Hà Nội và conversation_id
+    tz = ZoneInfo("Asia/Ho_Chi_Minh")
+    now = datetime.datetime.now(tz)
+    timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
+    conversation_id = f"{user_id}_{now.strftime('%Y%m%d%H%M%S')}"
+
+    # 2. Lấy session_name từ Redis (nếu có)
+    session_name = ""
+    try:
+        data = redis_client.get(f"session_name:{user_id}")
+        if data:
+            session_name = data.decode('utf-8')
+    except Exception:
+        pass
+
+    # 3. Chuẩn payload JSON
+    payload = {
+        "conversation_id": conversation_id,
+        "user_id": user_id,
+        "session_name": session_name,
+        "question": question,
+        "answer": answer,
+        "timestamp": timestamp,
+        "processing_time": "",   # nếu bạn có thời gian xử lý thì truyền vào đây
+        "rating": rating,
+        "comment": comment or ""
+    }
+
+    # 4. Gửi POST không block quá lâu
+    try:
+        requests.post(
+            WEBHOOK_URL,
+            json=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=1
+        )
+    except requests.RequestException as e:
+        # Chỉ log lỗi, không raise để endpoint vẫn trả 200
+        app.logger.warning(f"[Webhook] Failed to push rating: {e}")
+    return True
+
 
 # Hàm log câu hỏi và câu trả lời
 def log_qa(user_id, question, answer, processing_time=None, sources=None, rating=None, comment=None):
@@ -164,9 +213,6 @@ def update_rating(user_id, question, answer, rating, comment=None):
         import traceback
         traceback.print_exc()
         return False
-
-# Khởi tạo file log
-init_qa_log_file()
 
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 chroma_client = chromadb.PersistentClient(path=CHROMA_PATH)
@@ -393,7 +439,7 @@ def get_llm_response(prompt: str) -> str:
         messages=[
             {"role": "system", "content": 
              "Bạn là trợ lý tư vấn thông tin chuyên nghiệp. "
-             "Chỉ sử dụng thông tin hiện có làm tri thức để trả lời"
+             "Chỉ sử dụng thông tin hiện có làm tri thức để trả lời, cách trả lời linh hoạt không cứng nhắc"
              "Trả lời đúng trọng tâm câu hỏi. Hãy ngắn gọn và chính xác, có thể thay đổi theo yêu cầu câu hỏi nếu có "
              "Không đưa ra các thông tin câu hỏi không yêu cầu. "
              "Sử dụng định dạng rõ ràng với các điểm chính dưới dạng danh sách. Loại bỏ các ký hiệu markdown. "
@@ -670,39 +716,34 @@ def clear_session():
 # Endpoint để xử lý đánh giá từ người dùng
 @app.route('/rate_response', methods=['POST', 'OPTIONS'])
 def rate_response():
-    try:
-        # Xử lý OPTIONS request cho CORS
-        if request.method == 'OPTIONS':
-            response = jsonify({'status': 'success'})
-            response.headers.add('Access-Control-Allow-Origin', '*')
-            response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
-            response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
-            return response
-            
-        data = request.json
-        user_id = data.get('user_id')
-        rating = data.get('rating')
-        comment = data.get('comment', '')
-        question = data.get('question', '')
-        answer = data.get('answer', '')
-        
-        print(f"Received rating request: {rating} from user {user_id}")
-        print(f"Question: {question[:30]}... Answer: {answer[:30]}...")
-        
-        if not user_id or not rating:
-            return jsonify({'error': 'Missing required data'}), 400
-            
-        # Cập nhật đánh giá trong file log
-        success = update_rating(user_id, question, answer, rating, comment)
-        
-        if success:
-            return jsonify({'status': 'success'})
-        else:
-            return jsonify({'error': 'Failed to save rating'}), 500
-            
-    except Exception as e:
-        print(f"Error in /rate_response: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+    # 1) OPTIONS cho CORS
+    if request.method == 'OPTIONS':
+        resp = jsonify({'status': 'success'})
+        resp.headers.add('Access-Control-Allow-Origin', '*')
+        resp.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        resp.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        return resp
+
+    # 2) Đọc dữ liệu client gửi lên
+    data = request.get_json(force=True)
+    user_id = data.get('user_id')
+    rating  = data.get('rating')
+    comment = data.get('comment', '')
+    question= data.get('question', '')
+    answer  = data.get('answer', '')
+
+    # 3) Validate
+    if not user_id or rating is None:
+        return jsonify({'error': 'Missing required data'}), 400
+
+    app.logger.info(f"Received rating={rating} for user={user_id}")
+
+    # 4) Đẩy ngay lên Google Sheets qua Webhook
+    push_rating_webhook(user_id, question, answer, rating, comment)
+
+    # 5) Trả về success cho front‑end
+    return jsonify({'status': 'success'})
+
         
 # Chạy server
 if __name__ == "__main__":
