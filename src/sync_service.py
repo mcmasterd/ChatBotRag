@@ -42,7 +42,7 @@ def main():
     logger.info("Dịch vụ đồng bộ Google Sheets đã khởi động")
     
     # Khoảng thời gian đồng bộ (đơn vị: giây)
-    SYNC_INTERVAL = 15  # 5 giây (khoảng thời gian rất ngắn)
+    SYNC_INTERVAL = 1000  # 5 giây (khoảng thời gian rất ngắn)
     
     # Ghi cảnh báo nếu thời gian đồng bộ quá ngắn
     if SYNC_INTERVAL < 60:

@@ -25,12 +25,83 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE_DIR = os.path.dirname(CURRENT_DIR)
 CHROMA_PATH = os.path.join(BASE_DIR, "chroma_db")
 LOGS_DIR = os.path.join(BASE_DIR, "logs")
-
 # Đảm bảo thư mục logs tồn tại
 Path(LOGS_DIR).mkdir(exist_ok=True)
-
 # Tệp log cho câu hỏi và câu trả lời
 QA_LOG_FILE = os.path.join(LOGS_DIR, "qa_log.csv")
+
+client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+chroma_client = chromadb.PersistentClient(path=CHROMA_PATH)
+redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True, password='terminator')
+
+# Simplified response cache with size limit
+_response_cache = {}
+MAX_CACHE_SIZE = 30
+
+# Định nghĩa Local Embedding Function
+class LocalEmbeddingFunction:
+    def __init__(self, timeout=30):
+        self.timeout = timeout
+        
+    def __call__(self, input: List[str]) -> List[List[float]]:
+        try:
+            response = requests.post(
+                "http://192.168.1.131:8000/embed", 
+                json={"texts": input},
+                timeout=self.timeout
+            )
+            response.raise_for_status()
+            result = response.json()
+            
+            # Kiểm tra định dạng đặc biệt: API có thể trả về dạng phẳng (768 số)
+            # thay vì dạng mảng 2 chiều (mảng của các mảng 768 phần tử)
+            if isinstance(result, list) and len(result) > 0:
+                # Trường hợp đặc biệt: nếu số phần tử là bội số của 768 và tất cả đều là số
+                # thì đây có thể là dạng phẳng của vector
+                if (len(result) % 768 == 0 and 
+                    all(isinstance(x, (int, float)) for x in result) and
+                    len(input) == len(result) // 768):
+                    
+                    print(f"Phát hiện định dạng phẳng của vector! Chuyển đổi...")
+                    # Chuyển đổi từ dạng phẳng sang dạng mảng 2 chiều
+                    reshaped_result = []
+                    for i in range(0, len(result), 768):
+                        reshaped_result.append(result[i:i+768])
+                    result = reshaped_result
+                    print(f"Đã chuyển đổi thành {len(result)} vector, mỗi vector có {len(result[0]) if result else 0} chiều")
+                
+                # Kiểm tra từng embedding
+                for i, embedding in enumerate(result):
+                    # Nếu là float (lỗi), chuyển đổi thành list
+                    if isinstance(embedding, (int, float)):
+                        print(f"Lỗi: embedding thứ {i} là số, không phải list")
+                        result[i] = [0.0] * 768
+                    # Nếu là list rỗng, thay thế bằng vector 0
+                    elif not embedding or len(embedding) == 0:
+                        print(f"Lỗi: embedding thứ {i} là list rỗng")
+                        result[i] = [0.0] * 768
+            else:
+                print(f"Lỗi định dạng embedding: Kết quả không phải danh sách hoặc rỗng")
+                return [[0.0] * 768 for _ in input]  # Vector 768 chiều
+            
+            return result
+        except requests.exceptions.RequestException as e:
+            print(f"Lỗi khi gọi API embedding: {str(e)}")
+            return [[0.0] * 768 for _ in input]  # Vector 768 chiều
+        except Exception as e:
+            print(f"Lỗi không xác định khi xử lý embedding: {str(e)}")
+            return [[0.0] * 768 for _ in input]  # Vector 768 chiều
+
+# Sử dụng Local Embedding Function
+embedding_function = LocalEmbeddingFunction()
+
+# Biến toàn cục để lưu collection
+collection = None
+try:
+    collection = chroma_client.get_collection(name="scholarship_documents", embedding_function=embedding_function)
+    print("Successfully loaded collection 'scholarship_documents'.")
+except chromadb.errors.InvalidCollectionException:
+    print("Error: Collection 'scholarship_documents' does not exist. Please contact the administrator to initialize the knowledge base.")
 
 # Tạo file CSV log nếu chưa tồn tại
 def init_qa_log_file():
@@ -48,6 +119,8 @@ def init_qa_log_file():
                 'Rating',
                 'Feedback'
             ])
+# Khởi tạo file log
+init_qa_log_file()
 
 # Hàm log câu hỏi và câu trả lời
 def log_qa(user_id, question, answer, processing_time=None, sources=None, rating=None, comment=None):
@@ -165,145 +238,24 @@ def update_rating(user_id, question, answer, rating, comment=None):
         traceback.print_exc()
         return False
 
-# Khởi tạo file log
-init_qa_log_file()
-
-client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-chroma_client = chromadb.PersistentClient(path=CHROMA_PATH)
-redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True, password='terminator')
-
-# Định nghĩa Local Embedding Function
-class LocalEmbeddingFunction:
-    def __init__(self, timeout=30):
-        self.timeout = timeout
-        
-    def __call__(self, input: List[str]) -> List[List[float]]:
-        try:
-            response = requests.post(
-                "http://192.168.1.131:8000/embed", 
-                json={"texts": input},
-                timeout=self.timeout
-            )
-            response.raise_for_status()
-            result = response.json()
-            
-            # Kiểm tra định dạng đặc biệt: API có thể trả về dạng phẳng (768 số)
-            # thay vì dạng mảng 2 chiều (mảng của các mảng 768 phần tử)
-            if isinstance(result, list) and len(result) > 0:
-                # Trường hợp đặc biệt: nếu số phần tử là bội số của 768 và tất cả đều là số
-                # thì đây có thể là dạng phẳng của vector
-                if (len(result) % 768 == 0 and 
-                    all(isinstance(x, (int, float)) for x in result) and
-                    len(input) == len(result) // 768):
-                    
-                    print(f"Phát hiện định dạng phẳng của vector! Chuyển đổi...")
-                    # Chuyển đổi từ dạng phẳng sang dạng mảng 2 chiều
-                    reshaped_result = []
-                    for i in range(0, len(result), 768):
-                        reshaped_result.append(result[i:i+768])
-                    result = reshaped_result
-                    print(f"Đã chuyển đổi thành {len(result)} vector, mỗi vector có {len(result[0]) if result else 0} chiều")
-                
-                # Kiểm tra từng embedding
-                for i, embedding in enumerate(result):
-                    # Nếu là float (lỗi), chuyển đổi thành list
-                    if isinstance(embedding, (int, float)):
-                        print(f"Lỗi: embedding thứ {i} là số, không phải list")
-                        result[i] = [0.0] * 768
-                    # Nếu là list rỗng, thay thế bằng vector 0
-                    elif not embedding or len(embedding) == 0:
-                        print(f"Lỗi: embedding thứ {i} là list rỗng")
-                        result[i] = [0.0] * 768
-            else:
-                print(f"Lỗi định dạng embedding: Kết quả không phải danh sách hoặc rỗng")
-                return [[0.0] * 768 for _ in input]  # Vector 768 chiều
-            
-            return result
-        except requests.exceptions.RequestException as e:
-            print(f"Lỗi khi gọi API embedding: {str(e)}")
-            return [[0.0] * 768 for _ in input]  # Vector 768 chiều
-        except Exception as e:
-            print(f"Lỗi không xác định khi xử lý embedding: {str(e)}")
-            return [[0.0] * 768 for _ in input]  # Vector 768 chiều
-
-# Sử dụng Local Embedding Function
-embedding_function = LocalEmbeddingFunction()
-
-try:
-    collection = chroma_client.get_collection(name="scholarship_documents", embedding_function=embedding_function)
-except chromadb.errors.InvalidCollectionException:
-    print("Collection 'scholarship-qa' does not exist. Creating new collection...")
-    collection = chroma_client.create_collection(name="scholarship-qa", embedding_function=embedding_function)
-    collection.add(
-        documents=["Đây là tài liệu mẫu về học bổng ICTU"],
-        metadatas=[{"source": "ictu.edu.vn"}],
-        ids=["doc1"]
-    )
-    print("Collection 'scholarship-qa' created successfully.")
-
-# Simplified response cache with size limit
-_response_cache = {}
-MAX_CACHE_SIZE = 30
-
-# Category keyword mapping with inverse index for fast lookup
-CATEGORY_KEYWORDS = {
-    "Scholarship": ["điều kiện", "yêu cầu", "tiêu chuẩn", "tiêu chí", "đủ điều kiện", "đáp ứng", "học bổng", "khuyến khích"],
-    "Decree": ["quy trình", "thủ tục", "các bước", "quá trình", "thực hiện", "nghị định", "nộp hồ sơ"],
-    "Timeline": ["thời gian", "thời hạn", "khi nào", "hạn cuối", "deadline", "lịch trình"]
-}
-KEYWORD_TO_CATEGORY = {kw: cat for cat, keywords in CATEGORY_KEYWORDS.items() for kw in keywords}
-
-def detect_categories(query: str) -> Set[str]:
-    """Detect categories from query using keyword matching with improved fallback"""
-    query_lower = query.lower()
-    detected = {KEYWORD_TO_CATEGORY[kw] for kw in KEYWORD_TO_CATEGORY if kw in query_lower}
-    
-    # More flexible detection - if no categories detected, we'll use pure vector search
-    return detected
-
-def build_category_filter(categories: Set[str]):
-    """Build ChromaDB filter from categories"""
-    if not categories:
-        return None
-        
-    if len(categories) == 1:
-        category = next(iter(categories))
-        return {"$or": [{"category": category}, {"subcategory": category}]}
-    
-    return {"$or": [{"category": cat} for cat in categories] + [{"subcategory": cat} for cat in categories]}
-
-def get_relevant_content(query: str, use_categories: bool = False, final_results: int = 4) -> List[Dict]:
+def get_relevant_content(query: str, final_results: int = 4) -> List[Dict]:
     """Get relevant content with hybrid retrieval and reranking"""
     start = time.time()
     
-    # Build filter based on detected categories
-    filter_dict = None
-    categories = set()
-    
-    if use_categories:
-        categories = detect_categories(query)
-        if categories:
-            print(f"Detected categories: {categories}")
-            filter_dict = build_category_filter(categories)
+    # Kiểm tra nếu collection không tồn tại
+    if collection is None:
+        print("Error: No scholarship_documents collection available.")
+        return []
     
     try:
         # First stage: retrieve initial results
         initial_results = 10
         
-        # If no categories detected, use pure vector search with more results
-        if not categories and use_categories:
-            print("No categories detected, using pure vector similarity search")
-        
-        try:
-            results = collection.query(
-                query_texts=[query],
-                n_results=initial_results,
-                where=filter_dict,
-                include=["metadatas", "documents"]
-            )
-        except Exception as e:
-            print(f"Lỗi khi truy vấn collection: {str(e)}")
-            return []
+        results = collection.query(
+            query_texts=[query],
+            n_results=initial_results,
+            include=["metadatas", "documents"]
+        )
         
         # Process results
         candidate_content = []
@@ -393,17 +345,19 @@ def get_llm_response(prompt: str) -> str:
         messages=[
             {"role": "system", "content": 
              "Bạn là trợ lý tư vấn thông tin chuyên nghiệp. "
-             "Chỉ sử dụng thông tin hiện có làm tri thức để trả lời"
-             "Trả lời đúng trọng tâm câu hỏi. Hãy ngắn gọn và chính xác, có thể thay đổi theo yêu cầu câu hỏi nếu có "
-             "Không đưa ra các thông tin câu hỏi không yêu cầu. "
-             "Sử dụng định dạng rõ ràng với các điểm chính dưới dạng danh sách. Loại bỏ các ký hiệu markdown. "
+             "Chỉ sử dụng thông tin đã được cung cấp để trả lời. "
+             "Nếu không có đủ thông tin, hãy thừa nhận một cách lịch sự và đề nghị người dùng hỏi lại. "
              "Nếu có thông tin mâu thuẫn, ưu tiên nguồn mới nhất. "
-             "Thừa nhận khi không có đủ thông tin."             
-             "Trích dẫn nguồn cụ thể (điều, khoản, số văn bản nếu có). "
+             "Trả lời đúng trọng tâm câu hỏi với giọng điệu thân thiện và gần gũi. "
+             "Trích dẫn nguồn cụ thể (điều, khoản, số văn bản nếu có) một cách tự nhiên."
+             "Sử dụng định dạng dễ đọc, có thể trình bày dưới dạng danh sách nếu phù hợp. "
+             "Hãy ngắn gọn và chính xác, nhưng có thể cung cấp thêm chi tiết nếu người dùng yêu cầu. "
+             "Sử dụng ngôn ngữ gần gũi, phù hợp với văn hóa Việt Nam. "
+             "Loại bỏ các ký hiệu markdown để câu trả lời dễ hiểu hơn. " 
             },
             {"role": "user", "content": prompt}
         ],
-        temperature=0.3,
+        temperature=0.5,
         max_tokens=600,
         presence_penalty=0.3
     )
@@ -411,19 +365,116 @@ def get_llm_response(prompt: str) -> str:
     print(f"LLM response time: {time.time() - start:.4f}s")
     return response.choices[0].message.content
 
+def get_similar_cached_response(query: str, threshold: float = 0.9) -> str | None:
+    """Tìm phản hồi từ cache cho câu hỏi tương tự."""
+    try:
+        normalized_query = normalize_query(query)
+        cache_index_key = "cache:index"
+        cached_queries = redis_client.zrange(cache_index_key, 0, -1)
+        if not cached_queries:
+            return None
+        
+        # Tạo embedding cho câu hỏi
+        query_embedding = embedding_function([query])[0]
+        
+        for cached_query in cached_queries:
+            cached_embedding_key = f"cache:embedding:{cached_query}"
+            cached_embedding = redis_client.get(cached_embedding_key)
+            if not cached_embedding:
+                continue
+            cached_embedding = json.loads(cached_embedding)
+            
+            # Tính cosine similarity
+            similarity = cosine_similarity(query_embedding, cached_embedding)
+            if similarity >= threshold:
+                cache_key = f"cache:response:{cached_query}"
+                cached_response = redis_client.get(cache_key)
+                if cached_response:
+                    print(f"Similar query found: '{cached_query}' with similarity {similarity:.2f}")
+                    redis_client.zadd(cache_index_key, {cached_query: time.time()})
+                    redis_client.expire(cache_key, 1800)
+                    return cached_response
+    except redis.exceptions.RedisError as e:
+        print(f"Redis error when checking similar cache: {str(e)}")
+    except Exception as e:
+        print(f"Error checking similar cache: {str(e)}")
+    return None
+
+def cosine_similarity(vec1: list, vec2: list) -> float:
+    """Tính cosine similarity giữa hai vector."""
+    dot_product = sum(a * b for a, b in zip(vec1, vec2))
+    norm1 = math.sqrt(sum(a * a for a in vec1))
+    norm2 = math.sqrt(sum(b * b for b in vec2))
+    if norm1 == 0 or norm2 == 0:
+        return 0.0
+    return dot_product / (norm1 * norm2)
+
+def normalize_query(query: str) -> str:
+    """Chuẩn hóa câu hỏi: loại bỏ khoảng trắng thừa, chuyển thành chữ thường."""
+    return ' '.join(query.lower().strip().split())
+
+def get_cached_response(query: str) -> str | None:
+    """Lấy phản hồi từ Redis cache."""
+    try:
+        normalized_query = normalize_query(query)
+        cache_key = f"cache:response:{normalized_query}"
+        cached_response = redis_client.get(cache_key)
+        if cached_response:
+            print(f"Cache hit for query: '{normalized_query}'")
+            # Cập nhật TTL để gia hạn cache
+            redis_client.expire(cache_key, 3600)  # TTL 1 giờ
+            return cached_response
+    except redis.exceptions.RedisError as e:
+        print(f"Redis error when checking cache: {str(e)}")
+    return None
+
+def set_cached_response(query: str, response: str):
+    """Lưu phản hồi và embedding vào Redis cache với TTL."""
+    try:
+        normalized_query = normalize_query(query)
+        cache_key = f"cache:response:{normalized_query}"
+        redis_client.setex(cache_key, 1800, response)
+        
+        # Lưu embedding
+        query_embedding = embedding_function([query])[0]
+        embedding_key = f"cache:embedding:{normalized_query}"
+        redis_client.setex(embedding_key, 1800, json.dumps(query_embedding))
+        
+        # Cập nhật index
+        cache_index_key = "cache:index"
+        current_time = time.time()
+        redis_client.zadd(cache_index_key, {normalized_query: current_time})
+        cache_count = redis_client.zcard(cache_index_key)
+        if cache_count > MAX_CACHE_SIZE:
+            old_keys = redis_client.zrange(cache_index_key, 0, cache_count - MAX_CACHE_SIZE)
+            for old_query in old_keys:
+                redis_client.delete(f"cache:response:{old_query}")
+                redis_client.delete(f"cache:embedding:{old_query}")
+                redis_client.zrem(cache_index_key, old_query)
+        print(f"Cached response for query: '{normalized_query}'")
+    except redis.exceptions.RedisError as e:
+        print(f"Redis error when setting cache: {str(e)}")
+
 def process_user_query(query: str, user_id: str) -> str:
     try:
         start = time.time()
-        normalized_query = ' '.join(query.lower().split())
+        normalized_query = normalize_query(query)
         
-        if normalized_query in _response_cache:
-            print(f"Cache hit for query: '{normalized_query}'")
-            response = _response_cache[normalized_query]
+        # Kiểm tra cache chính xác
+        cached_response = get_cached_response(query)
+        if cached_response:
             processing_time = time.time() - start
-            # Log từ cache
-            log_qa(user_id, query, response, processing_time)
+            log_qa(user_id, query, cached_response, processing_time)
             print(f"Response time: {processing_time:.2f}s")
-            return response
+            return cached_response
+        
+        # Kiểm tra cache tương tự
+        similar_response = get_similar_cached_response(query)
+        if similar_response:
+            processing_time = time.time() - start
+            log_qa(user_id, query, similar_response, processing_time)
+            print(f"Similar response time: {processing_time:.2f}s")
+            return similar_response
         
         # Lấy session từ Redis
         session_key = f"session:{user_id}"
@@ -433,17 +484,20 @@ def process_user_query(query: str, user_id: str) -> str:
         else:
             session_data = []
         
-        # Giới hạn session: chỉ lưu 5 tương tác cuối
-        session_data = session_data[-5:]
+        # Giới hạn session: chỉ lưu lịch sử 2 tương tác cuối
+        session_data = session_data[-2:]
         context = "\n".join([f"Q: {item['question']}\nA: {item['answer']}" 
                            for item in session_data]) if session_data else ""
         
         # Tạo prompt với ngữ cảnh
         n_results = 4 if len(query.split()) > 6 else 5
-        relevant_content = get_relevant_content(query, use_categories=False, final_results=n_results)
-        if len(relevant_content) < 2:
-            print("Insufficient results with categories, falling back to pure vector search")
-            relevant_content = get_relevant_content(query, use_categories=False, final_results=5)
+        relevant_content = get_relevant_content(query, final_results=n_results)
+        
+        # Kiểm tra nếu không có tài liệu do collection không tồn tại
+        if not relevant_content and collection is None:
+            error_msg = "Không tìm thấy cơ sở tri thức học bổng. Vui lòng liên hệ quản trị viên."
+            log_qa(user_id, query, error_msg, time.time() - start)
+            return error_msg
         
         # Trích xuất nguồn tài liệu
         sources = []
@@ -461,17 +515,14 @@ def process_user_query(query: str, user_id: str) -> str:
         
         response = get_llm_response(prompt_with_context)
         
-        # Cập nhật session với TTL (hết hạn sau 1 giờ)
+        # Cập nhật session với TTL
         session_data.append({"question": query, "answer": response})
-        redis_client.setex(session_key, 900, json.dumps(session_data))  # TTL = 900 giây (15 phút)
+        redis_client.setex(session_key, 3600, json.dumps(session_data))
         
-        # Cập nhật cache
-        if len(_response_cache) >= MAX_CACHE_SIZE:
-            _response_cache.pop(next(iter(_response_cache)))
-        _response_cache[normalized_query] = response
+        # Lưu vào cache Redis
+        set_cached_response(query, response)
         
         processing_time = time.time() - start
-        # Log câu hỏi và câu trả lời
         log_qa(user_id, query, response, processing_time)
         
         print(f"Total response time: {processing_time:.2f}s\n")
@@ -479,7 +530,6 @@ def process_user_query(query: str, user_id: str) -> str:
     except Exception as e:
         print(f"Error processing query: {str(e)}")
         error_msg = f"Xin lỗi, đã có lỗi xảy ra: {str(e)}"
-        # Log lỗi
         log_qa(user_id, query, error_msg)
         return error_msg
 
@@ -545,30 +595,38 @@ def ask():
         print('Error: Missing query or user_id', {'query': query, 'user_id': user_id})
         return jsonify({'error': 'No query or user_id provided'}), 400
     
-    # Kiểm tra cache
-    if query in _response_cache:
-        response = _response_cache[query]
-        print('Response from cache:', response)
-    else:
-        # Nếu không có trong cache, xử lý và lưu vào cache
-        response = process_user_query(query, user_id)
-        _response_cache[query] = response
-        print('Response from process_user_query:', response)
+    # Kiểm tra cache Redis
+    cached_response = get_cached_response(query)
+    if cached_response:
+        # Lưu lịch sử vào Redis ngay cả khi dùng cache
+        session_key = f"session_history:{user_id}"
+        session_data = redis_client.get(session_key)
+        if session_data:
+            session_data = json.loads(session_data)
+        else:
+            session_data = []
+        session_data.append({'question': query, 'answer': cached_response})
+        if len(session_data) > 5:
+            session_data = session_data[-5:]
+        redis_client.setex(session_key, 1800, json.dumps(session_data))
+        print('Response from cache:', cached_response)
+        return jsonify({'response': cached_response})
     
-    # Luôn lưu lịch sử vào Redis, bất kể phản hồi từ cache hay không
-    session_key = f"session_history:{user_id}"  # Sửa key ở đây
+    # Nếu không có trong cache, xử lý truy vấn
+    response = process_user_query(query, user_id)
+    print('Response from process_user_query:', response)
+    
+    # Lưu lịch sử vào Redis
+    session_key = f"session_history:{user_id}"
     session_data = redis_client.get(session_key)
     if session_data:
         session_data = json.loads(session_data)
     else:
         session_data = []
-    
-    # Thêm câu hỏi và phản hồi vào lịch sử
     session_data.append({'question': query, 'answer': response})
-    # Giới hạn số lượng tương tác (nếu cần, ví dụ: 5 tương tác tối đa)
     if len(session_data) > 5:
         session_data = session_data[-5:]
-    redis_client.setex(session_key, 3600, json.dumps(session_data))  # TTL 1 giờ
+    redis_client.setex(session_key, 3600, json.dumps(session_data))
     
     print('Updated session history:', session_data)
     return jsonify({'response': response})
