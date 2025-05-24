@@ -49,3 +49,12 @@ coverage.xml
 # OS files
 .DS_Store
 Thumbs.db
+
+# Thêm các file nhạy cảm và dữ liệu không nên commit
+*.json
+!data/*.json
+logs/
+chroma_db/
+data/*.csv
+# Không commit file credentials Google hoặc các file json chứa key
+# Nếu cần giữ lại file json dữ liệu, hãy loại trừ bằng !data/*.json

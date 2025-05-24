@@ -1,20 +1,34 @@
 # ICTU Scholarship Chatbot
 
-## Cài đặt
+## Giới thiệu
+Chatbot hỏi đáp học bổng ICTU, sử dụng Flask, ChromaDB, Redis, OpenAI, Google Sheets API.
+
+## Cài đặt nhanh
 
 1. Clone repository:
    ```bash
    git clone <repository-url>
    cd ChatBotRag
+   ```
+2. Tạo môi trường ảo và cài requirements:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+   ```
+3. Tạo file `.env` với nội dung:
+   ```
+   OPENAI_API_KEY=your_openai_api_key_here
+   GOOGLE_SHEET_ID=your_google_sheet_id_here
+   GOOGLE_SHEET_WORKSHEET=Sheet1
+   GOOGLE_CREDENTIALS_FILE=k-project-456412-29ad68606a96.json
+   ```
+   > **Lưu ý:** Không commit file `.env` và file credentials `.json` lên git!
 
-2. Tạo môi trường ảo:
-    python3 -m venv venv
-    source venv/bin/activate  # Linux/Mac
-    # Hoặc: venv\Scripts\activate  # Windows
+4. Các bước cài đặt, ingest dữ liệu, chạy backend, frontend, cấu hình Google Sheets, xem chi tiết trong [docs/setup.md](docs/setup.md)
 
-3. Cài đặt các gói từ requirements.txt(pip freeze > requirements.txt để sửa file)
-    pip install -r requirements.txt
-
+## Cấu hình Nginx, Systemd, ...
+(Phần này giữ nguyên như cũ, xem hướng dẫn chi tiết bên dưới)
 
 4. Tạo file .env: OPENAI_API_KEY=your_openai_api_key_here
 
@@ -139,3 +153,7 @@ WantedBy=multi-user.target
     sudo systemctl daemon-reload
     sudo systemctl enable chatbot.service
     sudo systemctl start chatbot.service
+
+## Lưu ý bảo mật
+- Không commit file `.env`, file credentials Google, hoặc dữ liệu nhạy cảm lên git.
+- Đảm bảo các file nhạy cảm đã được thêm vào `.gitignore`.

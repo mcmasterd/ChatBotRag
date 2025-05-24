@@ -4,11 +4,18 @@ from oauth2client.service_account import ServiceAccountCredentials
 from pathlib import Path
 import os
 import numpy as np
+from dotenv import load_dotenv
 
 # ====== Cấu hình ======
-SHEET_ID = "1FLshX7ZRWugtmgtsZKfbXeWXU0yNhBMA0BjN7HrnIQc"         # <- Thay bằng ID thật từ URL Google Sheet
-WORKSHEET_NAME = "Sheet1"                       # <- Tên worksheet bạn muốn ghi vào
-CREDENTIALS_FILE = "k-project-456412-29ad68606a96.json"           # <- Tên file credentials JSON của bạn (nằm trong thư mục gốc dự án)
+SHEET_ID = os.environ.get("GOOGLE_SHEET_ID")
+WORKSHEET_NAME = os.environ.get("GOOGLE_SHEET_WORKSHEET")
+CREDENTIALS_FILE = os.environ.get("GOOGLE_CREDENTIALS_FILE")
+
+# Kiểm tra biến môi trường
+if not SHEET_ID:
+    raise ValueError("Chưa cấu hình biến môi trường GOOGLE_SHEET_ID")
+if not CREDENTIALS_FILE:
+    raise ValueError("Chưa cấu hình biến môi trường GOOGLE_CREDENTIALS_FILE")
 
 # ====== Thiết lập đường dẫn ======
 BASE_DIR = Path(__file__).resolve().parent.parent

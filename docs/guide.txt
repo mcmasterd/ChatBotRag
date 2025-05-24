@@ -1,0 +1,54 @@
+============================
+HƯỚNG DẪN SỬ DỤNG & VẬN HÀNH
+============================
+
+1. Các endpoint API chính (Flask backend)
+------------------------------------------
+- POST /ask
+    + Nhận: {"query": <câu hỏi>, "user_id": <id>}
+    + Trả về: {"response": <câu trả lời>}
+- GET /get_user_id
+    + Trả về: {"user_id": <id mới>}
+- GET /get_session_history?user_id=<id>
+    + Trả về: {"history": [ {question, answer}, ... ] }
+- POST /set_session_name
+    + Nhận: {"user_id": <id>, "name": <tên>}
+- GET /get_session_name?user_id=<id>
+    + Trả về: {"name": <tên>}
+- POST /clear_session
+    + Nhận: {"user_id": <id>}
+- POST /rate_response
+    + Nhận: {user_id, rating, comment, question, answer}
+
+2. Hướng dẫn ingest dữ liệu mới
+-------------------------------
+- Đặt file .md hoặc .json vào thư mục data/
+- Chạy: python src/ingest_database.py
+- Đảm bảo không có lỗi, kiểm tra log embedding.log
+- Collection ChromaDB sẽ tự động cập nhật
+
+3. Kiểm thử hệ thống
+--------------------
+- test/test_Vector_Find.py: kiểm thử truy vấn vector và BM25
+- test/test_Local_API.py: kiểm thử API embedding nội bộ
+- test/test.py: kiểm thử truy vấn ChromaDB với OpenAI embedding
+- Có thể chạy từng file test bằng python <file>
+
+4. Mở rộng & tuỳ biến
+---------------------
+- Có thể thay đổi model embedding trong ingest_database.py
+- Có thể mở rộng các endpoint Flask cho nhu cầu mới
+- Có thể thêm các trường metadata cho tài liệu trong ingest
+- Giao diện frontend có thể chỉnh sửa dễ dàng trong src/index2.html
+
+5. Lưu ý vận hành thực tế
+-------------------------
+- Đảm bảo Redis luôn chạy trước khi khởi động Flask backend
+- Đảm bảo file logs/qa_log.csv có quyền ghi cho user chạy service
+- Nếu Google Sheets API lỗi, kiểm tra credentials và quota
+- Khi cập nhật dữ liệu lớn, nên dừng backend để tránh lỗi đồng bộ
+- Nên backup thư mục chroma_db/ và logs/ định kỳ
+
+6. Liên hệ & hỗ trợ
+-------------------
+- Mọi thắc mắc về kỹ thuật, liên hệ quản trị viên dự án hoặc xem thêm Readme.md 

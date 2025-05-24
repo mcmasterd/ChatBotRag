@@ -576,6 +576,30 @@
             z-index: 1000;
             border: 1px solid #374151;
         }
+
+        .new-session-btn {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            margin: 10px 0;
+            background-color: #2563eb;
+            color: #fff;
+            border: none;
+            border-radius: 9999px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, box-shadow 0.2s;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .new-session-btn:hover {
+            background-color: #1d4ed8;
+            box-shadow: 0 4px 16px rgba(37, 99, 235, 0.15);
+        }
     </style>
 </head>
 
@@ -645,8 +669,8 @@
             </div>
 
             <div class="session-info">
-                <div id="session-list"></div> <!-- Thay select bằng div -->
-                <button id="new-session">New Conversation</button>
+                <div id="session-list"></div>
+                <button id="new-session" class="new-session-btn">New Conversation</button>
                 <div id="history-container" style="display: none;"></div>
             </div>
 
@@ -1056,6 +1080,7 @@
                 const renameButton = document.createElement('button');
                 renameButton.className = 'rename-session';
                 renameButton.textContent = '✎';
+                renameButton.title = 'Đổi tên cuộc trò truyện';
                 renameButton.addEventListener('click', async () => {
                     const newName = prompt('Nhập tên mới cho cuộc trò truyện:', displayName);
                     if (newName) {
@@ -1072,6 +1097,7 @@
                 const deleteButton = document.createElement('button');
                 deleteButton.className = 'delete-session';
                 deleteButton.textContent = 'X';
+                deleteButton.title = 'Xóa cuộc trò truyện';
                 deleteButton.addEventListener('click', async () => {
                     if (confirm(`Bạn có chắc chắn muốn xóa phiên ${displayName}?`)) {
                         await fetch('/clear_session', {

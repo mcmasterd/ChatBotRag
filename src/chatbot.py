@@ -18,7 +18,6 @@ import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-
 # Load environment variables and initialize clients
 load_dotenv()
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -348,8 +347,7 @@ def get_llm_response(prompt: str) -> str:
              "Chỉ sử dụng thông tin đã được cung cấp để trả lời. "
              "Nếu không có đủ thông tin, hãy thừa nhận một cách lịch sự và đề nghị người dùng hỏi lại. "
              "Nếu có thông tin mâu thuẫn, ưu tiên nguồn mới nhất. "
-             "Trả lời đúng trọng tâm câu hỏi với giọng điệu thân thiện và gần gũi. "
-             "Trích dẫn nguồn cụ thể (điều, khoản, số văn bản nếu có) một cách tự nhiên."
+             "Trả lời đúng đầy đủ, trọng tâm câu hỏi với giọng điệu thân thiện và gần gũi. "
              "Sử dụng định dạng dễ đọc, có thể trình bày dưới dạng danh sách nếu phù hợp. "
              "Hãy ngắn gọn và chính xác, nhưng có thể cung cấp thêm chi tiết nếu người dùng yêu cầu. "
              "Sử dụng ngôn ngữ gần gũi, phù hợp với văn hóa Việt Nam. "
@@ -460,7 +458,7 @@ def process_user_query(query: str, user_id: str) -> str:
         start = time.time()
         normalized_query = normalize_query(query)
         
-        # Kiểm tra cache chính xác
+        # Kiểm tra cache 
         cached_response = get_cached_response(query)
         if cached_response:
             processing_time = time.time() - start
@@ -469,12 +467,12 @@ def process_user_query(query: str, user_id: str) -> str:
             return cached_response
         
         # Kiểm tra cache tương tự
-        similar_response = get_similar_cached_response(query)
-        if similar_response:
-            processing_time = time.time() - start
-            log_qa(user_id, query, similar_response, processing_time)
-            print(f"Similar response time: {processing_time:.2f}s")
-            return similar_response
+        # similar_response = get_similar_cached_response(query)
+        # if similar_response:
+        #     processing_time = time.time() - start
+        #     log_qa(user_id, query, similar_response, processing_time)
+        #     print(f"Similar response time: {processing_time:.2f}s")
+        #     return similar_response
         
         # Lấy session từ Redis
         session_key = f"session:{user_id}"
