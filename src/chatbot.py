@@ -1,22 +1,23 @@
 from flask import Flask, request, jsonify
-import os
-import chromadb
 from openai import OpenAI
 from dotenv import load_dotenv
 from typing import List, Dict, Set
-import time
-import re
 from collections import Counter
-import math
 from flask_cors import CORS
+from pathlib import Path
+from zoneinfo import ZoneInfo
+import time
+import os
+import chromadb
+import re
+import math
 import redis
 import json
 import uuid
 import requests
 import csv
 import datetime
-from pathlib import Path
-from zoneinfo import ZoneInfo
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Load environment variables and initialize clients
 load_dotenv()
@@ -24,8 +25,10 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE_DIR = os.path.dirname(CURRENT_DIR)
 CHROMA_PATH = os.path.join(BASE_DIR, "chroma_db")
 LOGS_DIR = os.path.join(BASE_DIR, "logs")
+
 # Đảm bảo thư mục logs tồn tại
 Path(LOGS_DIR).mkdir(exist_ok=True)
+
 # Tệp log cho câu hỏi và câu trả lời
 QA_LOG_FILE = os.path.join(LOGS_DIR, "qa_log.csv")
 
@@ -36,6 +39,16 @@ redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=T
 # Simplified response cache with size limit
 _response_cache = {}
 MAX_CACHE_SIZE = 30
+
+# Danh sách collection và mô tả chủ đề 
+COLLECTIONS_INFO = [
+    {"name": "scholarship_documents", "desc": "học bổng"},
+    {"name": "ictu_intro_documents", "desc": "tầm nhìn, sứ mệnh, giá trị cốt lõi, giá trị giáo dục"},
+    {"name": "training_and_regulations", "desc": "đào tạo, quy chế học tập"},
+    {"name": "tuition_and_support", "desc": "học phí, hỗ trợ học tập"},
+]
+COLLECTION_NAME_TO_DESC = {c["name"]: c["desc"] for c in COLLECTIONS_INFO}
+COLLECTION_DESC_TO_NAME = {c["desc"]: c["name"] for c in COLLECTIONS_INFO}
 
 # Định nghĩa Local Embedding Function
 class LocalEmbeddingFunction:
@@ -93,14 +106,6 @@ class LocalEmbeddingFunction:
 
 # Sử dụng Local Embedding Function
 embedding_function = LocalEmbeddingFunction()
-
-# Biến toàn cục để lưu collection
-collection = None
-try:
-    collection = chroma_client.get_collection(name="scholarship_documents", embedding_function=embedding_function)
-    print("Successfully loaded collection 'scholarship_documents'.")
-except chromadb.errors.InvalidCollectionException:
-    print("Error: Collection 'scholarship_documents' does not exist. Please contact the administrator to initialize the knowledge base.")
 
 # Tạo file CSV log nếu chưa tồn tại
 def init_qa_log_file():
@@ -241,11 +246,6 @@ def get_relevant_content(query: str, final_results: int = 4) -> List[Dict]:
     """Get relevant content with hybrid retrieval and reranking"""
     start = time.time()
     
-    # Kiểm tra nếu collection không tồn tại
-    if collection is None:
-        print("Error: No scholarship_documents collection available.")
-        return []
-    
     try:
         # First stage: retrieve initial results
         initial_results = 10
@@ -343,15 +343,15 @@ def get_llm_response(prompt: str) -> str:
         model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": 
-             "Bạn là trợ lý tư vấn thông tin chuyên nghiệp. "
-             "Chỉ sử dụng thông tin đã được cung cấp để trả lời. "
-             "Nếu không có đủ thông tin, hãy thừa nhận một cách lịch sự và đề nghị người dùng hỏi lại. "
-             "Nếu có thông tin mâu thuẫn, ưu tiên nguồn mới nhất. "
-             "Trả lời đúng đầy đủ, trọng tâm câu hỏi với giọng điệu thân thiện và gần gũi. "
-             "Sử dụng định dạng dễ đọc, có thể trình bày dưới dạng danh sách nếu phù hợp. "
-             "Hãy ngắn gọn và chính xác, nhưng có thể cung cấp thêm chi tiết nếu người dùng yêu cầu. "
-             "Sử dụng ngôn ngữ gần gũi, phù hợp với văn hóa Việt Nam. "
-             "Loại bỏ các ký hiệu markdown để câu trả lời dễ hiểu hơn. " 
+             "Bạn là trợ lý tư vấn thông tin chuyên nghiệp."
+             "Chỉ sử dụng thông tin đã được cung cấp để trả lời."
+             "Nếu không có đủ thông tin, hãy thừa nhận một cách lịch sự và đề nghị người dùng hỏi lại."
+             "Nếu có thông tin mâu thuẫn, ưu tiên nguồn mới nhất."
+             "Trả lời đúng đầy đủ, trọng tâm câu hỏi với giọng điệu thân thiện và gần gũi."
+             "Sử dụng định dạng dễ đọc, có thể trình bày dưới dạng danh sách nếu phù hợp."
+             "Hãy ngắn gọn và chính xác, nhưng có thể cung cấp thêm chi tiết nếu người dùng yêu cầu."
+             "Sử dụng ngôn ngữ gần gũi, phù hợp với văn hóa Việt Nam."
+             "Không dùng các ký hiệu markdown(Ví dụ: #, *, **, _) để trả lời." 
             },
             {"role": "user", "content": prompt}
         ],
@@ -362,50 +362,6 @@ def get_llm_response(prompt: str) -> str:
     
     print(f"LLM response time: {time.time() - start:.4f}s")
     return response.choices[0].message.content
-
-def get_similar_cached_response(query: str, threshold: float = 0.9) -> str | None:
-    """Tìm phản hồi từ cache cho câu hỏi tương tự."""
-    try:
-        normalized_query = normalize_query(query)
-        cache_index_key = "cache:index"
-        cached_queries = redis_client.zrange(cache_index_key, 0, -1)
-        if not cached_queries:
-            return None
-        
-        # Tạo embedding cho câu hỏi
-        query_embedding = embedding_function([query])[0]
-        
-        for cached_query in cached_queries:
-            cached_embedding_key = f"cache:embedding:{cached_query}"
-            cached_embedding = redis_client.get(cached_embedding_key)
-            if not cached_embedding:
-                continue
-            cached_embedding = json.loads(cached_embedding)
-            
-            # Tính cosine similarity
-            similarity = cosine_similarity(query_embedding, cached_embedding)
-            if similarity >= threshold:
-                cache_key = f"cache:response:{cached_query}"
-                cached_response = redis_client.get(cache_key)
-                if cached_response:
-                    print(f"Similar query found: '{cached_query}' with similarity {similarity:.2f}")
-                    redis_client.zadd(cache_index_key, {cached_query: time.time()})
-                    redis_client.expire(cache_key, 1800)
-                    return cached_response
-    except redis.exceptions.RedisError as e:
-        print(f"Redis error when checking similar cache: {str(e)}")
-    except Exception as e:
-        print(f"Error checking similar cache: {str(e)}")
-    return None
-
-def cosine_similarity(vec1: list, vec2: list) -> float:
-    """Tính cosine similarity giữa hai vector."""
-    dot_product = sum(a * b for a, b in zip(vec1, vec2))
-    norm1 = math.sqrt(sum(a * a for a in vec1))
-    norm2 = math.sqrt(sum(b * b for b in vec2))
-    if norm1 == 0 or norm2 == 0:
-        return 0.0
-    return dot_product / (norm1 * norm2)
 
 def normalize_query(query: str) -> str:
     """Chuẩn hóa câu hỏi: loại bỏ khoảng trắng thừa, chuyển thành chữ thường."""
@@ -427,17 +383,11 @@ def get_cached_response(query: str) -> str | None:
     return None
 
 def set_cached_response(query: str, response: str):
-    """Lưu phản hồi và embedding vào Redis cache với TTL."""
+    """Lưu phản hồi vào Redis cache với TTL (chỉ exact match, không lưu embedding)."""
     try:
         normalized_query = normalize_query(query)
         cache_key = f"cache:response:{normalized_query}"
         redis_client.setex(cache_key, 1800, response)
-        
-        # Lưu embedding
-        query_embedding = embedding_function([query])[0]
-        embedding_key = f"cache:embedding:{normalized_query}"
-        redis_client.setex(embedding_key, 1800, json.dumps(query_embedding))
-        
         # Cập nhật index
         cache_index_key = "cache:index"
         current_time = time.time()
@@ -447,17 +397,85 @@ def set_cached_response(query: str, response: str):
             old_keys = redis_client.zrange(cache_index_key, 0, cache_count - MAX_CACHE_SIZE)
             for old_query in old_keys:
                 redis_client.delete(f"cache:response:{old_query}")
-                redis_client.delete(f"cache:embedding:{old_query}")
                 redis_client.zrem(cache_index_key, old_query)
         print(f"Cached response for query: '{normalized_query}'")
     except redis.exceptions.RedisError as e:
         print(f"Redis error when setting cache: {str(e)}")
 
+# Hàm dùng LLM để phân loại collection phù hợp cho câu hỏi
+
+def classify_collections_llm(question, context=None):
+    desc_list = "\n".join([f"- {c['desc']} ({c['name']})" for c in COLLECTIONS_INFO])
+    prompt = (
+        "Bạn là hệ thống phân loại chủ đề cho chatbot.\n"
+        "Các collection hiện có:\n"
+        f"{desc_list}\n"
+        "Dựa vào câu hỏi (và ngữ cảnh hội thoại nếu có), hãy trả về tên collection phù hợp nhất.\n"
+        "Nếu liên quan nhiều collection, hãy trả về danh sách tên collection, phân tách bằng dấu phẩy.\n"
+        "Chỉ trả về tên collection, không giải thích.\n"
+        "Câu hỏi: " + question
+    )
+    if context:
+        prompt += f"\nNgữ cảnh hội thoại: {context}"
+    resp = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "system", "content": "Bạn là hệ thống phân loại collection cho chatbot."},
+                 {"role": "user", "content": prompt}],
+        temperature=0.0,
+        max_tokens=32
+    )
+    raw = resp.choices[0].message.content.strip()
+    # Chuẩn hóa kết quả: tách tên collection, loại bỏ thừa
+    names = [x.strip() for x in raw.split(",") if x.strip() in COLLECTION_NAME_TO_DESC]
+    return names
+
+# Truy vấn nhiều collection, hợp nhất kết quả, rerank
+
+def multi_collection_search(query, collection_names, final_results=4):
+    all_results = []
+    def query_collection(cname):
+        try:
+            col = chroma_client.get_collection(name=cname, embedding_function=embedding_function)
+            results = col.query(query_texts=[query], n_results=7, include=["metadatas", "documents"])
+            local_results = []
+            if results['metadatas'] and results['metadatas'][0]:
+                for i, metadata in enumerate(results['metadatas'][0]):
+                    document_text = results['documents'][0][i] if results['documents'] and results['documents'][0] else ''
+                    local_results.append({
+                        'document': document_text,
+                        'metadata': metadata,
+                        'collection': cname,
+                        'relevance_score': 0.0
+                    })
+            return local_results
+        except Exception as e:
+            print(f"Không thể truy vấn collection {cname}: {e}")
+            return []
+    # Truy vấn song song các collection
+    with ThreadPoolExecutor(max_workers=min(8, len(collection_names))) as executor:
+        future_to_cname = {executor.submit(query_collection, cname): cname for cname in collection_names}
+        for future in as_completed(future_to_cname):
+            result = future.result()
+            if result:
+                all_results.extend(result)
+    # Rerank toàn bộ kết quả bằng BM25
+    if all_results:
+        documents = [item['document'] for item in all_results]
+        bm25 = BM25(documents)
+        bm25_scores = bm25.get_scores(query)
+        for i, score in enumerate(bm25_scores):
+            all_results[i]['relevance_score'] = score
+        all_results.sort(key=lambda x: x.get('relevance_score', 0), reverse=True)
+        return all_results[:final_results]
+    return []
+
+# Sửa process_user_query để dùng LLM phân loại collection
+
 def process_user_query(query: str, user_id: str) -> str:
     try:
         start = time.time()
         normalized_query = normalize_query(query)
-        
+
         # Kiểm tra cache 
         cached_response = get_cached_response(query)
         if cached_response:
@@ -465,15 +483,7 @@ def process_user_query(query: str, user_id: str) -> str:
             log_qa(user_id, query, cached_response, processing_time)
             print(f"Response time: {processing_time:.2f}s")
             return cached_response
-        
-        # Kiểm tra cache tương tự
-        # similar_response = get_similar_cached_response(query)
-        # if similar_response:
-        #     processing_time = time.time() - start
-        #     log_qa(user_id, query, similar_response, processing_time)
-        #     print(f"Similar response time: {processing_time:.2f}s")
-        #     return similar_response
-        
+
         # Lấy session từ Redis
         session_key = f"session:{user_id}"
         session_data = redis_client.get(session_key)
@@ -481,22 +491,22 @@ def process_user_query(query: str, user_id: str) -> str:
             session_data = json.loads(session_data)
         else:
             session_data = []
-        
-        # Giới hạn session: chỉ lưu lịch sử 2 tương tác cuối
-        session_data = session_data[-2:]
-        context = "\n".join([f"Q: {item['question']}\nA: {item['answer']}" 
-                           for item in session_data]) if session_data else ""
-        
-        # Tạo prompt với ngữ cảnh
-        n_results = 4 if len(query.split()) > 6 else 5
-        relevant_content = get_relevant_content(query, final_results=n_results)
-        
-        # Kiểm tra nếu không có tài liệu do collection không tồn tại
-        if not relevant_content and collection is None:
-            error_msg = "Không tìm thấy cơ sở tri thức học bổng. Vui lòng liên hệ quản trị viên."
-            log_qa(user_id, query, error_msg, time.time() - start)
-            return error_msg
-        
+        # Lấy context hội thoại gần nhất
+        context = "\n".join([f"Q: {item['question']}\nA: {item['answer']}" for item in session_data]) if session_data else ""
+
+        # Dùng LLM phân loại collection
+        collection_names = classify_collections_llm(query, context)
+        print(f"LLM phân loại collection: {collection_names}")
+        if not collection_names:
+            # Fallback: tìm trên tất cả collection
+            collection_names = [c['name'] for c in COLLECTIONS_INFO]
+        # Truy vấn các collection được xác định
+        relevant_content = multi_collection_search(query, collection_names, final_results=4)
+        # Nếu không có kết quả, fallback tìm tất cả collection
+        if not relevant_content:
+            print("Không tìm thấy kết quả, fallback tìm trên tất cả collection")
+            collection_names = [c['name'] for c in COLLECTIONS_INFO]
+            relevant_content = multi_collection_search(query, collection_names, final_results=4)
         # Trích xuất nguồn tài liệu
         sources = []
         for item in relevant_content:
@@ -507,22 +517,16 @@ def process_user_query(query: str, user_id: str) -> str:
                 sources.append(metadata['doc_id'])
         sources_str = ", ".join(set(sources))
         print(f"Sources: {sources_str}")
-        
         base_prompt = create_prompt(query, relevant_content)
         prompt_with_context = f"Lịch sử trò chuyện:\n{context}\n\n{base_prompt}" if context else base_prompt
-        
         response = get_llm_response(prompt_with_context)
-        
         # Cập nhật session với TTL
         session_data.append({"question": query, "answer": response})
         redis_client.setex(session_key, 3600, json.dumps(session_data))
-        
         # Lưu vào cache Redis
         set_cached_response(query, response)
-        
         processing_time = time.time() - start
         log_qa(user_id, query, response, processing_time)
-        
         print(f"Total response time: {processing_time:.2f}s\n")
         return response
     except Exception as e:

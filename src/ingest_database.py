@@ -9,6 +9,7 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from ratelimit import limits, sleep_and_retry
 from sentence_transformers import SentenceTransformer
+import argparse
 
 # Cấu hình logging với encoding UTF-8
 logging.basicConfig(
@@ -107,6 +108,13 @@ def get_data_files(data_folder: str) -> List[Dict[str, str]]:
         logging.error(f"Lỗi khi đọc thư mục {data_folder}: {str(e)}")
     return data_files
 
+# Các trường metadata chuẩn
+REQUIRED_FIELDS_MD = ["data_type"]  # Chỉ bắt buộc data_type cho markdown
+REQUIRED_FIELDS_JSON = ["data_type", "category"]  # JSON giữ nguyên
+OPTIONAL_FIELDS = ["doc_id", "source", "date", "partial_mod", "modify", "amend", "category"]
+ALL_FIELDS_MD = REQUIRED_FIELDS_MD + OPTIONAL_FIELDS
+ALL_FIELDS_JSON = REQUIRED_FIELDS_JSON + OPTIONAL_FIELDS
+
 def parse_markdown(file_path: str) -> List[Dict[str, Any]]:
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
@@ -123,13 +131,7 @@ def parse_markdown(file_path: str) -> List[Dict[str, Any]]:
         if not section:
             continue
 
-        metadata = {
-            "document_type": "markdown",
-            "category": "Scholarship",
-            "file_path": file_path,
-            "file_name": os.path.basename(file_path),
-            "source": "docs"
-        }
+        metadata = {}
         content = ''
         in_metadata = False
 
@@ -148,18 +150,19 @@ def parse_markdown(file_path: str) -> List[Dict[str, Any]]:
                     key_value = remaining.split(':**', 1)
                     key = key_value[0].strip()
                     value = key_value[1].strip() if len(key_value) > 1 else ""
-                    metadata[key] = value
+                    if key in ALL_FIELDS_MD:
+                        metadata[key] = value
             elif not in_metadata:
                 content += line + '\n'
 
         # Trích xuất tiêu đề và nội dung chính
-        title_match = re.search(r'### (.*?)\n', content)
+        # Sửa regex để nhận diện mọi trường hợp ### (có thể có nhiều khoảng trắng, xuống dòng \r\n hoặc \n)
+        title_match = re.search(r'###\s+(.*?)\s*(?:\r?\n|$)', content)
         if not title_match:
             logging.warning(f"Section bị bỏ qua trong {file_path}: {section[:100]}... (Không tìm thấy tiêu đề dạng ###)")
             continue
 
         title = title_match.group(1).strip()
-        # Lấy toàn bộ nội dung sau tiêu đề, không yêu cầu "- Nội dung:"
         content_start_index = content.find(title_match.group(0)) + len(title_match.group(0))
         content_text = content[content_start_index:].strip()
         if not content_text:
@@ -168,14 +171,22 @@ def parse_markdown(file_path: str) -> List[Dict[str, Any]]:
 
         document = f"{title}: {content_text}"
 
-        # Trích xuất thêm metadata nếu có
-        article_match = re.search(r'Điều (\d+)', title)
-        if article_match:
-            metadata["article"] = article_match.group(1)
-
-        clause_match = re.search(r'Khoản (\d+)', title)
-        if clause_match:
-            metadata["clause"] = clause_match.group(1)
+        # Đảm bảo đủ trường metadata
+        missing_required = [f for f in REQUIRED_FIELDS_MD if f not in metadata or not metadata[f]]
+        if missing_required:
+            logging.warning(f"Section bị bỏ qua trong {file_path}: thiếu trường bắt buộc {missing_required}")
+            continue
+        # Bổ sung trường tùy chọn nếu thiếu
+        for f in OPTIONAL_FIELDS:
+            if f not in metadata:
+                metadata[f] = '' if f != 'partial_mod' else False
+        # Chuẩn hóa partial_mod
+        if 'partial_mod' in metadata:
+            v = metadata['partial_mod']
+            if isinstance(v, str):
+                metadata['partial_mod'] = v.lower() in ['true', '1', 'yes']
+            else:
+                metadata['partial_mod'] = bool(v)
 
         parsed_sections.append({
             'document': document,
@@ -196,7 +207,6 @@ def parse_json(file_path: str) -> List[Dict[str, Any]]:
         logging.error(f"Lỗi khi đọc file JSON {file_path}: {str(e)}")
         return []
 
-    # Kiểm tra xem dữ liệu có phải là danh sách trực tiếp không
     if isinstance(data, list):
         qa_pairs = data
     elif isinstance(data, dict) and "qa_pairs" in data:
@@ -215,18 +225,24 @@ def parse_json(file_path: str) -> List[Dict[str, Any]]:
         answer = item["answer"].strip()
         document = f"{question}: {answer}"
 
-        metadata = {
-            "document_type": "json",
-            "category": item.get("category", "FAQs"),
-            "file_path": file_path,
-            "file_name": os.path.basename(file_path),
-            "source": "FAQs",
-            "qa_source": item.get("qa_source", ""),
-            "date": item.get("date", ""),
-            "amend": item.get("amend", ""),
-            "data_type": item.get("data_type", "faqs"),
-            "doc_id": item.get("doc_id", "")
-        }
+        metadata = {}
+        for f in ALL_FIELDS_JSON:
+            if f in item:
+                metadata[f] = item[f]
+            else:
+                metadata[f] = '' if f != 'partial_mod' else False
+        # Chuẩn hóa partial_mod
+        if 'partial_mod' in metadata:
+            v = metadata['partial_mod']
+            if isinstance(v, str):
+                metadata['partial_mod'] = v.lower() in ['true', '1', 'yes']
+            else:
+                metadata['partial_mod'] = bool(v)
+        # Đảm bảo đủ trường bắt buộc
+        missing_required = [f for f in REQUIRED_FIELDS_JSON if not metadata[f]]
+        if missing_required:
+            logging.warning(f"Bỏ qua Q&A trong {file_path}: thiếu trường bắt buộc {missing_required}")
+            continue
 
         parsed_sections.append({
             'document': document,
@@ -375,10 +391,25 @@ def embed_and_store_data_files(data_folder: str, collection_name: str):
     - Tổng số section mới được xử lý: {total_sections}
     """)
 
-if __name__ == "__main__":
-    data_folder = "data"
-    collection_name = "scholarship_documents"
-    
-    logging.info("Bắt đầu quá trình embedding...")
+def main():
+    """
+        Các collection hiện tại:
+        - scholarship_documents: Dữ liệu học bổng
+        - ictu_intro_documents: Dữ liệu giới thiệu ICTU
+        - training_and_regulations: Dữ liệu đào tạo và quy định
+        - tuition_and_support: Dữ liệu hỗ trợ, miễn giảm học học phí         
+    """
+    parser = argparse.ArgumentParser(description="Ingest dữ liệu vào ChromaDB collection tuỳ chọn.")
+    parser.add_argument('--data-folder', type=str, default='data/training_and_regulations', help='Thư mục chứa dữ liệu cần embedding (có thể là data hoặc data/ten_folder)')
+    parser.add_argument('--collection-name', type=str, default='training_and_regulations', help='Tên collection muốn lưu dữ liệu vào')
+    args = parser.parse_args()
+
+    data_folder = args.data_folder
+    collection_name = args.collection_name
+
+    logging.info(f"Bắt đầu quá trình embedding cho folder: {data_folder}, collection: {collection_name}")
     embed_and_store_data_files(data_folder, collection_name)
     logging.info("Hoàn tất quá trình embedding!")
+
+if __name__ == "__main__":
+    main()
