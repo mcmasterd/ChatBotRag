@@ -1278,33 +1278,47 @@
                     messagesContainer.appendChild(createMessageElement(userMessage));
                     input.value = '';
 
-                    const loadingMessage = createLoadingMessage();
-                    messagesContainer.appendChild(loadingMessage);
-                    const timer = startTimer(loadingMessage);
+                    // Tạo tin nhắn bot trống để cập nhật dần
+                    const botMessage = { text: '', isBot: true };
+                    const botMessageElement = createMessageElement(botMessage);
+                    messagesContainer.appendChild(botMessageElement);
+                    const botTextElement = botMessageElement.querySelector('.message-text');
                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
-                    console.log('Sending to /ask:', { query: message, user_id: userId });
-
                     try {
-                        const response = await fetch('/ask', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ query: message, user_id: userId })
+                        // Sử dụng EventSource để nhận streaming response
+                        const eventSource = new EventSource(`/ask?query=${encodeURIComponent(message)}&user_id=${userId}&stream=true`);
+                        let fullResponse = '';
+
+                        eventSource.onmessage = (event) => {
+                            const data = JSON.parse(event.data);
+                            if (data.content) {
+                                fullResponse += data.content;
+                                botTextElement.textContent = fullResponse;
+                                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                            }
+                        };
+
+                        eventSource.addEventListener('done', (event) => {
+                            const data = JSON.parse(event.data);
+                            if (data.full_response) {
+                                fullResponse = data.full_response;
+                                botTextElement.textContent = fullResponse;
+                            }
+                            eventSource.close();
+                            lucide.createIcons();
                         });
-                        const data = await response.json();
-                        if (!response.ok) {
-                            throw new Error(`Server error: ${data.error || 'Unknown error'}`);
-                        }
-                        clearInterval(timer);
-                        messagesContainer.removeChild(loadingMessage);
-                        const botMessage = { text: data.response, isBot: true };
-                        messagesContainer.appendChild(createMessageElement(botMessage));
-                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                        lucide.createIcons();
+
+                        eventSource.onerror = (error) => {
+                            console.error('EventSource error:', error);
+                            botTextElement.textContent = 'Đã xảy ra lỗi khi nhận phản hồi. Vui lòng thử lại.';
+                            eventSource.close();
+                            lucide.createIcons();
+                        };
+
                     } catch (error) {
-                        console.error('Lỗi khi khởi tạo userId:', error);
-                        const errorMessage = { text: 'Không thể khởi tạo phiên làm việc. Vui lòng thử lại sau.', isBot: true };
-                        messagesContainer.appendChild(createMessageElement(errorMessage));
+                        console.error('Lỗi khi gửi tin nhắn:', error);
+                        botTextElement.textContent = 'Đã xảy ra lỗi. Vui lòng thử lại sau.';
                         lucide.createIcons();
                     }
                 }
@@ -1314,10 +1328,12 @@
                 { text: 'ICTU xin chào! Tôi có thể giúp bạn trả lời các câu hỏi về học bổng, quy định tại trường Đại học Công nghệ Thông tin và Truyền thông. Bạn có thể hỏi về điều kiện, quy trình xét duyệt, mức học bổng và nhiều thông tin khác.', isBot: true }
             ];
             const relatedQuestions = [
-                'Điều kiện để được xét học bổng khuyến khích học tập là gì?',
                 'Học bổng khuyến khích học tập là gì?',
                 'Quy định về người học trên giảng đường?',
-                'Quy định về kỷ cương của giảng viên trên giảng đường?'
+                'Quy định về kỷ cương của giảng viên trên giảng đường?',
+                'Yêu cầu khi muốn chuyển ngành?',
+                'Các thông tin về giảng dạy?',
+                'Quy định học hai văn bằng?',
             ];
 
             initialMessages.forEach(message => messagesContainer.appendChild(createMessageElement(message)));
