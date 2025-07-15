@@ -54,7 +54,8 @@ Thumbs.db
 *.json
 !data/*.json
 logs/
-chroma_db/
+zzzrequiem/
+# chroma_db/  # Commented out to allow committing embedded data
 data/*.csv
 # Không commit file credentials Google hoặc các file json chứa key
 # Nếu cần giữ lại file json dữ liệu, hãy loại trừ bằng !data/*.json

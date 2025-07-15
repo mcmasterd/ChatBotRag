@@ -1,0 +1,4 @@
+2025-06-18 01:48:26,122 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2025-06-18 01:48:26,130 - INFO - Use pytorch device_name: cpu
+2025-06-18 01:48:26,130 - INFO - Load pretrained SentenceTransformer: NghiemAbe/Vi-Legal-Bi-Encoder-v2
+2025-06-18 01:48:33,103 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.

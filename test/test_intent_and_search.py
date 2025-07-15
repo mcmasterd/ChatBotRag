@@ -6,14 +6,14 @@ from chatbot import classify_categories_llm, get_relevant_content
 if __name__ == "__main__":
     print("=== Kiểm tra nhận diện ý định và tìm kiếm ===")
     while True:
-        query = input("Nhập câu hỏi (hoặc 'exit' để thoát): ").strip()
+        query = input("[-] Nhập câu hỏi (hoặc 'exit' để thoát): ").strip()
         if query.lower() == 'exit':
             break
         # Phân loại category
         categories = classify_categories_llm(query)
         print(f"\n[Category LLM phân loại]: {categories}")
         # Tìm kiếm vector
-        results = get_relevant_content(query, categories=categories, final_results=4)
+        results = get_relevant_content(query, categories=categories, final_results=2)
         print("\n[Kết quả tìm kiếm]:")
         if not results:
             print("Không tìm thấy kết quả phù hợp.")

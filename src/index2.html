@@ -828,7 +828,7 @@
                 <div class="related-container">
                     <h3 class="related-title">
                         <i data-lucide="book-open" style="width: 1rem; height: 1rem;"></i>
-                        Câu hỏi liên quan
+                        Câu hỏi gợi ý
                     </h3>
                     <div class="related-list" id="related-questions">
                         <!-- Câu hỏi liên quan sẽ được thêm vào đây -->
@@ -858,7 +858,9 @@
 
         let userId;
         let sessions = JSON.parse(localStorage.getItem('sessions')) || [];
-        let sessionNames = JSON.parse(localStorage.getItem('sessionNames')) || {}; //Lưu trũ phiên tại Client
+        let sessionNames = JSON.parse(localStorage.getItem('sessionNames')) || {}; //Lưu trữ phiên tại Client
+        function saveActive(id) { localStorage.setItem('activeSessionId', id); }
+        function getActive() { return localStorage.getItem('activeSessionId'); }
 
         async function initializeUserId() {
             try {
@@ -903,7 +905,7 @@
                     });
                 } else {
                     // Hiển thị tin nhắn mặc định nếu không có lịch sử
-                    const initialMessage = { text: 'ICTU xin chào! Tôi có thể giúp bạn trả lời các câu hỏi về học bổng, quy định tại trường Đại học Công nghệ Thông tin và Truyền thông. Bạn có thể hỏi về điều kiện, quy trình xét duyệt, mức học bổng và nhiều thông tin khác.', isBot: true };
+                    const initialMessage = { text: 'ICTU xin chào! Tôi có thể giúp bạn trả lời các câu hỏi về học bổng, quy định tại trường Đại học Công nghệ Thông tin và Truyền thông. Bạn có thể hỏi về điều kiện, quy trình xét duyệt, mức học bổng và nhiều thông tin khác.', isBot: true, disableRating: true };
                     messagesContainer.appendChild(createMessageElement(initialMessage));
                 }
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -938,7 +940,7 @@
             contentDiv.appendChild(textDiv);
 
             // Add rating buttons for bot messages
-            if (message.isBot) {
+            if (message.isBot && !message.disableRating) {
                 const ratingDiv = document.createElement('div');
                 ratingDiv.className = 'rating-buttons';
 
@@ -1198,6 +1200,7 @@
                 sessionName.textContent = displayName;
                 sessionName.addEventListener('click', () => {
                     userId = sessionId;
+                    saveActive(sessionId);
                     updateSessionList();
                     loadSessionHistoryIntoChat();
                 });
@@ -1220,7 +1223,7 @@
                 });
                 const deleteButton = document.createElement('button');
                 deleteButton.className = 'delete-session';
-                deleteButton.textContent = 'X';
+                deleteButton.textContent = '🗑';
                 deleteButton.title = 'Xóa cuộc trò truyện';
                 deleteButton.addEventListener('click', async () => {
                     if (confirm(`Bạn có chắc chắn muốn xóa phiên ${displayName}?`)) {
@@ -1236,11 +1239,13 @@
                         if (userId === sessionId) {
                             userId = sessions[0] || (await fetch('/get_user_id').then(res => res.json())).user_id;
                             if (!sessions.includes(userId)) {
-                                sessions.push(userId);
+                                sessions.unshift(userId);
                                 localStorage.setItem('sessions', JSON.stringify(sessions));
                             }
+                            saveActive(userId);
                         }
                         updateSessionList();
+                        loadSessionHistoryIntoChat(userId);
                     }
                 });
                 sessionItem.appendChild(sessionName);
@@ -1252,14 +1257,19 @@
 
         // Chờ userId trước khi thêm sự kiện
         initializeUserId().then(() => {
+            const saved = getActive();
+            if (saved && sessions.includes(saved)) userId = saved;
+            else if (!sessions.includes(userId)) userId = sessions[0];
             updateSessionList();
+            loadSessionHistoryIntoChat();
 
             document.getElementById('new-session').addEventListener('click', async () => {
                 try {
                     const response = await fetch('/get_user_id');
                     const data = await response.json();
                     userId = data.user_id;
-                    sessions.push(userId);
+                    sessions.unshift(userId);              // NEW – thêm đầu mảng
+                    saveActive(userId);
                     localStorage.setItem('sessions', JSON.stringify(sessions));
                     updateSessionList();
                     // Tải lịch sử của phiên mới (sẽ là rỗng vì phiên mới)
@@ -1278,10 +1288,11 @@
                     messagesContainer.appendChild(createMessageElement(userMessage));
                     input.value = '';
 
-                    // Tạo tin nhắn bot trống để cập nhật dần
-                    const botMessage = { text: '', isBot: true };
+                    // Tạo tin nhắn bot trống để cập nhật dần, ẨN khung đánh giá khi đang stream
+                    const botMessage = { text: '', isBot: true, disableRating: true };
                     const botMessageElement = createMessageElement(botMessage);
                     messagesContainer.appendChild(botMessageElement);
+                    lucide.createIcons(botMessageElement);
                     const botTextElement = botMessageElement.querySelector('.message-text');
                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
@@ -1306,7 +1317,17 @@
                                 botTextElement.textContent = fullResponse;
                             }
                             eventSource.close();
-                            lucide.createIcons();
+                            // Khi stream xong, HIỆN khung đánh giá cho message bot cuối cùng
+                            // Xóa message bot cũ và render lại với disableRating: false
+                            const lastBotMsg = messagesContainer.lastElementChild;
+                            if (lastBotMsg && lastBotMsg.classList.contains('bot')) {
+                                // Lưu lại text
+                                const text = lastBotMsg.querySelector('.message-text').textContent;
+                                // Tạo lại message bot với disableRating: false
+                                const newBotMsg = createMessageElement({ text, isBot: true });
+                                messagesContainer.replaceChild(newBotMsg, lastBotMsg);
+                                lucide.createIcons();
+                            }
                         });
 
                         eventSource.onerror = (error) => {
@@ -1325,7 +1346,7 @@
             });
 
             const initialMessages = [
-                { text: 'ICTU xin chào! Tôi có thể giúp bạn trả lời các câu hỏi về học bổng, quy định tại trường Đại học Công nghệ Thông tin và Truyền thông. Bạn có thể hỏi về điều kiện, quy trình xét duyệt, mức học bổng và nhiều thông tin khác.', isBot: true }
+                { text: 'ICTU xin chào! Tôi có thể giúp bạn trả lời các câu hỏi về học bổng, quy định tại trường Đại học Công nghệ Thông tin và Truyền thông. Bạn có thể hỏi về điều kiện, quy trình xét duyệt, mức học bổng và nhiều thông tin khác.', isBot: true, disableRating: true }
             ];
             const relatedQuestions = [
                 'Học bổng khuyến khích học tập là gì?',
@@ -1337,6 +1358,9 @@
             ];
 
             initialMessages.forEach(message => messagesContainer.appendChild(createMessageElement(message)));
+            if (messagesContainer.children.length === 0) {
+                initialMessages.forEach(m => messagesContainer.appendChild(createMessageElement(m)));
+            }
             relatedQuestions.forEach(question => relatedQuestionsContainer.appendChild(createRelatedQuestionButton(question)));
             lucide.createIcons();
         }).catch(error => {

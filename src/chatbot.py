@@ -236,44 +236,66 @@ def update_rating(user_id, question, answer, rating, comment=None):
         return False
 
 def get_relevant_content(query: str, categories: List[str] = None, final_results: int = 4) -> List[Dict]:
-    """Get relevant content with hybrid retrieval and reranking, filter by categories if provided"""
+    """Get relevant content with category filtering FIRST"""
     start = time.time()
     try:
-        initial_results = 10  # tăng số lượng để lọc category hiệu quả hơn
-        results = collection.query(
-            query_texts=[query],
-            n_results=initial_results,
-            include=["metadatas", "documents"]
-        )
+        # LOGIC MỚI: Filter category TRƯỚC khi semantic search
+        if categories:
+            # Tạo where clause cho ChromaDB
+            where_clause = {"category": {"$in": categories}}
+            
+            # Tăng số lượng kết quả khi search trong category cụ thể
+            initial_results = 20  # Tăng từ 10 lên 20
+            
+            print(f"Searching within categories: {categories}")
+            results = collection.query(
+                query_texts=[query],
+                n_results=initial_results,
+                where=where_clause,  # Filter TRỰC TIẾP trong ChromaDB
+                include=["metadatas", "documents"]
+            )
+        else:
+            # Không có category filter, search toàn bộ
+            initial_results = 10
+            results = collection.query(
+                query_texts=[query],
+                n_results=initial_results,
+                include=["metadatas", "documents"]
+            )
+        
+        # Prepare candidates (không cần filter thêm vì đã filter trong ChromaDB)
         candidate_content = []
         if results['metadatas'] and results['metadatas'][0]:
             for i, metadata in enumerate(results['metadatas'][0]):
                 document_text = results['documents'][0][i] if results['documents'] and results['documents'][0] else ''
-                # Lọc theo nhiều category nếu có
-                if (not categories) or (metadata.get('category') in categories):
-                    candidate_content.append({
-                        'document': document_text,
-                        'metadata': metadata,
-                        'relevance_score': 0.0
-                    })
+                candidate_content.append({
+                    'document': document_text,
+                    'metadata': metadata,
+                    'relevance_score': 0.0
+                })
+        
         # BM25 rerank
         if candidate_content:
             documents = [item['document'] for item in candidate_content]
             bm25 = BM25(documents)
             bm25_scores = bm25.get_scores(query)
+            
             for i, score in enumerate(bm25_scores):
                 candidate_content[i]['relevance_score'] = score
+                
             candidate_content.sort(key=lambda x: x.get('relevance_score', 0), reverse=True)
             final_content = candidate_content[:final_results]
+            
             print(f"Retrieval time: {time.time() - start:.4f}s, Final results: {len(final_content)}")
             return final_content
         else:
-            print("No initial results found.")
+            print(f"Retrieval time: {time.time() - start:.4f}s, Final results: 0")
             return []
+            
     except Exception as e:
-        print(f"Error during retrieval: {str(e)}")
+        print(f"Error in get_relevant_content: {str(e)}")
         return []
-
+    
 def create_prompt(query: str, content: List[Dict]) -> str:
     """Create optimized prompt from retrieved content"""
     context_items = []
@@ -318,15 +340,16 @@ def get_llm_response(prompt: str, stream: bool = False) -> str | Generator:
         model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": 
-             "Bạn là trợ lý tư vấn thông tin chuyên nghiệp."
+             "Bạn là trợ lý tư vấn thông tin chuyên nghiệp của trường ICTU."
+             "Không dùng các ký hiệu (#, *, **, _) trong phản hồi." 
              "Chỉ sử dụng thông tin đã được cung cấp để trả lời."
              "Nếu không có đủ thông tin, hãy thừa nhận một cách lịch sự và đề nghị người dùng hỏi lại."
              "Nếu có thông tin mâu thuẫn, ưu tiên nguồn mới nhất."
+             "Chú ý trả lời câu hỏi người dùng cho phù hợp với mạch hội thoại"
              "Trả lời đúng đầy đủ, trọng tâm câu hỏi với giọng điệu thân thiện và gần gũi."
              "Sử dụng định dạng dễ đọc, có thể trình bày dưới dạng danh sách nếu phù hợp."
              "Hãy ngắn gọn và chính xác, nhưng có thể cung cấp thêm chi tiết nếu người dùng yêu cầu."
              "Sử dụng ngôn ngữ gần gũi, phù hợp với văn hóa Việt Nam."
-             "Không dùng các ký hiệu markdown(Ví dụ: #, *, **, _)`trong phản hồi." 
             },
             {"role": "user", "content": prompt}
         ],
@@ -365,7 +388,7 @@ def get_cached_response(query: str) -> str | None:
         if cached_response:
             print(f"Cache hit for query: '{normalized_query}'")
             # Cập nhật TTL để gia hạn cache
-            redis_client.expire(cache_key, 3600)  # TTL 1 giờ
+            redis_client.expire(cache_key, 900)  # TTL 1 giờ
             return cached_response
     except redis.exceptions.RedisError as e:
         print(f"Redis error when checking cache: {str(e)}")
@@ -409,7 +432,7 @@ def process_user_query(query: str, user_id: str, categories: List[str] = None) -
         # Nếu categories chỉ là ['small_talk'] thì bỏ qua vector search
         if categories == ["small_talk"]:
             print("Detected small talk category. Skipping vector search.")
-            session_key = f"session:{user_id}"
+            session_key = f"session_history:{user_id}"
             session_data = redis_client.get(session_key)
             if session_data:
                 session_data = json.loads(session_data)
@@ -418,17 +441,19 @@ def process_user_query(query: str, user_id: str, categories: List[str] = None) -
                 session_data = []
             context = "\n".join([f"Q: {item['question']}\nA: {item['answer']}" for item in session_data]) if session_data else ""
             base_prompt = f"Lịch sử trò chuyện:\n{context}\n\nCÂU HỎI: {query}\nTRẢ LỜI:" if context else f"CÂU HỎI: {query}\nTRẢ LỜI:"
+            
             response = get_llm_response(base_prompt)
+
             session_data.append({"question": query, "answer": response})
-            redis_client.setex(session_key, 3600, json.dumps(session_data))
-            set_cached_response(query, response)
+            redis_client.setex(session_key, 900, json.dumps(session_data))
+            set_cached_response(query, response) # lưu cache
             processing_time = time.time() - start
             log_qa(user_id, query, response, processing_time)
             print(f"Total response time (small talk): {processing_time:.2f}s\n")
             return response
 
         # Lấy session từ Redis
-        session_key = f"session:{user_id}"
+        session_key = f"session_history:{user_id}"
         session_data = redis_client.get(session_key)
         if session_data:
             session_data = json.loads(session_data)
@@ -436,6 +461,7 @@ def process_user_query(query: str, user_id: str, categories: List[str] = None) -
         else:
             session_data = []
         context = "\n".join([f"Q: {item['question']}\nA: {item['answer']}" for item in session_data]) if session_data else ""
+        
         # Truy vấn collection duy nhất, lọc theo nhiều category nếu có
         relevant_content = get_relevant_content(query, categories=categories, final_results=4)
         sources = []
@@ -451,7 +477,7 @@ def process_user_query(query: str, user_id: str, categories: List[str] = None) -
         prompt_with_context = f"Lịch sử trò chuyện:\n{context}\n\n{base_prompt}" if context else base_prompt
         response = get_llm_response(prompt_with_context)
         session_data.append({"question": query, "answer": response})
-        redis_client.setex(session_key, 3600, json.dumps(session_data))
+        redis_client.setex(session_key, 900, json.dumps(session_data))
         set_cached_response(query, response)
         processing_time = time.time() - start
         log_qa(user_id, query, response, processing_time)
@@ -551,7 +577,7 @@ def ask():
                 session_data = []
             session_data.append({'question': query, 'answer': cached_response})
             if len(session_data) > 5:
-                session_data = session_data[-5:]
+                session_data = session_data[-4:]
             redis_client.setex(session_key, 1800, json.dumps(session_data))
             print('Response from cache:', cached_response)
             return jsonify({'response': cached_response})
@@ -562,11 +588,17 @@ def ask():
             try:
                 start = time.time()
                 normalized_query = normalize_query(query)
+                cached = get_cached_response(query)
+                if cached:
+                    # phát lại qua SSE để frontend nhận tức thì
+                    yield f'data: {json.dumps({"content": cached, "cached": True})}\n\n'
+                    yield f'event: done\ndata: {json.dumps({"full_response": cached})}\n\n'
+                    return
 
                 # Nếu categories chỉ là ['small_talk'] thì bỏ qua vector search
                 if categories == ["small_talk"]:
                     print("Detected small talk category. Skipping vector search.")
-                    session_key = f"session:{user_id}"
+                    session_key = f"session_history:{user_id}"
                     session_data = redis_client.get(session_key)
                     if session_data:
                         session_data = json.loads(session_data)
@@ -586,7 +618,7 @@ def ask():
                         elif chunk.startswith("event: done"):
                             # Update session and cache after completion
                             session_data.append({"question": query, "answer": full_response})
-                            redis_client.setex(session_key, 3600, json.dumps(session_data))
+                            redis_client.setex(session_key, 900, json.dumps(session_data))
                             set_cached_response(query, full_response)
                             processing_time = time.time() - start
                             log_qa(user_id, query, full_response, processing_time)
@@ -594,7 +626,7 @@ def ask():
                     return
 
                 # Lấy session từ Redis
-                session_key = f"session:{user_id}"
+                session_key = f"session_history:{user_id}"
                 session_data = redis_client.get(session_key)
                 if session_data:
                     session_data = json.loads(session_data)
@@ -628,7 +660,7 @@ def ask():
                     elif chunk.startswith("event: done"):
                         # Update session and cache after completion
                         session_data.append({"question": query, "answer": full_response})
-                        redis_client.setex(session_key, 3600, json.dumps(session_data))
+                        redis_client.setex(session_key, 900, json.dumps(session_data))
                         set_cached_response(query, full_response)
                         processing_time = time.time() - start
                         log_qa(user_id, query, full_response, processing_time)
@@ -663,8 +695,8 @@ def ask():
             session_data = []
         session_data.append({'question': query, 'answer': response})
         if len(session_data) > 5:
-            session_data = session_data[-5:]
-        redis_client.setex(session_key, 3600, json.dumps(session_data))
+            session_data = session_data[-4:]
+        redis_client.setex(session_key, 900, json.dumps(session_data))
         print('Updated session history:', session_data)
         return jsonify({'response': response})
 
@@ -799,82 +831,87 @@ def rate_response():
         print(f"Error in /rate_response: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-# Danh sách category hợp lệ và mô tả
 CATEGORIES = [
     "scholarship",
-    "ictu_intro",
+    "ictu_slogan",
     "training_and_regulations",
     "tuition_and_support",
     "student_affairs",
     "small_talk"
 ]
+
 CATEGORY_DESCRIPTIONS = {
-    "scholarship": "Câu hỏi về học bổng, điều kiện, quy trình, mức học bổng, xét duyệt học bổng.",
-    "ictu_intro": "Giới thiệu về trường ICTU, lịch sử, sứ mệnh, tầm nhìn, cơ cấu tổ chức.",
-    "training_and_regulations": "Đào tạo, chương trình học, quy chế, quy định học vụ, tín chỉ, đăng ký học.",
-    "tuition_and_support": "Học phí, các khoản thu, hỗ trợ tài chính, miễn giảm học phí, vay vốn.",
-    "student_affairs": "Quản lý sinh viên, công tác sinh viên, công tác quản lý người học, hồ sơ, thẻ sinh viên, nội trú, và các hoạt động liên quan đến đời sống sinh viên",
-    "small_talk": "Chào hỏi, hỏi thăm, xã giao, cảm ơn, xin lỗi, hỏi về thời tiết, hỏi bot là ai, các câu hỏi không liên quan đến thông tin trường."
+    "scholarship": (
+        "Câu hỏi về học bổng, điều kiện, quy trình, mức học bổng, xét duyệt học bổng."
+    ),
+    "ictu_slogan": (
+        "Chỉ bao gồm TẦM NHÌN, SỨ MỆNH, GIÁ TRỊ CỐT LÕI, TRIẾT LÝ GIÁO DỤC của ICTU. "
+        "Không bao gồm quyền, nghĩa vụ, môi trường học tập hay đời sống sinh viên."
+    ),
+    "training_and_regulations": (
+        "Chương trình đào tạo, chương trình học, đăng ký học phần, tín chỉ, quy chế – quy định học vụ."
+    ),
+    "tuition_and_support": (
+        "Học phí, các khoản thu, miễn giảm, hỗ trợ tài chính."
+    ),
+    "student_affairs": (
+        "Quản lý, sinh viên, hồ sơ, thẻ SV, nội trú, ĐỜI SỐNG sinh viên,  "
+        "QUYỀN & NGHĨA VỤ & NHIỆM VỤ người học, môi trường học tập an toàn, hoạt động ngoại khóa."
+        "Công tác, quản lý sinh viên, đoàn hội, giáo dục, khen thưởng, kỷ luật"
+    ),
+    "small_talk": (
+        "Chào hỏi, xã giao, cảm ơn, xin lỗi, hỏi bot là ai, hỏi thời tiết… "
+        "Các câu hỏi KHÔNG liên quan tới thông tin trường ICTU."
+    )
 }
 
+# Hàm phân loại
 def classify_categories_llm(query: str) -> List[str]:
-    """
-    Phân loại query vào một hoặc nhiều category bằng LLM.
-    Ưu tiên trả về 1 category cho câu hỏi rõ ràng hoặc ['small_talk'] nếu không liên quan.
-    """
-    # Tạo danh sách tên category
-    cat_lines = [f"- {cat}" for cat in CATEGORIES]
-    # System prompt chứa mô tả category
     system_prompt = (
-        "Bạn là hệ thống phân loại câu hỏi vào các category chính xác nhất. "
-        "Dưới đây là mô tả các category:\n" +
-        "\n".join(f"- {cat}: {CATEGORY_DESCRIPTIONS[cat]}" for cat in CATEGORIES) +
-        "\nHãy phân loại câu hỏi dựa trên mô tả này, ưu tiên chọn ít category nhất có thể."
+        "Bạn là hệ thống phân loại câu hỏi vào đúng category.\n"
+        "Mô tả category:\n" +
+        "\n".join(f"- {c}: {CATEGORY_DESCRIPTIONS[c]}" for c in CATEGORIES) +
+        "\nChỉ chọn category khi câu hỏi phù hợp nhất với mô tả; nếu quá mơ hồ, trả về []."
     )
-    # User prompt chứa tên category, câu hỏi, và yêu cầu JSON
+
+    cat_list = "\n".join(f"- {c}" for c in CATEGORIES)
     user_prompt = (
-        "Danh sách category hợp lệ:\n" + "\n".join(cat_lines) + "\n"
-        "Trả về danh sách category phù hợp nhất (tối đa 2 category), dạng JSON array (VD: ```json\n[\"category_name\"]\n```).\n"
-        "Nếu câu hỏi chỉ liên quan đến một lĩnh vực, trả về đúng 1 category.\n"
-        "Nếu câu hỏi là small talk (chào hỏi, xã giao, cảm ơn, hỏi bot là ai, v.v.), trả về [\"small_talk\"].\n"
-        "Nếu không chắc chắn, chọn category gần nhất.\n"
+        f"Danh sách category hợp lệ:\n{cat_list}\n"
+        "Trả về JSON array, tối đa 2 phần tử, ví dụ: [\"scholarship\"].\n"
+        "Nếu câu hỏi là small talk (chào hỏi, xã giao…), trả về [\"small_talk\"].\n"
+        "Nếu KHÔNG chắc chắn, trả về [].\n"
         f"CÂU HỎI: {query}"
     )
+
     try:
-        response = client.chat.completions.create(
+        resp = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
             temperature=0.0,
-            max_tokens=150
+            max_tokens=120
         )
-        text = response.choices[0].message.content
-        # Loại bỏ markdown nếu có
-        text = text.replace("```json\n", "").replace("\n```", "").strip()
-        
-        # Thử parse JSON
+        raw = resp.choices[0].message.content
+
+        # Làm sạch & parse JSON
+        raw = raw.replace("```json", "").replace("```", "").strip()
         import json as _json
         try:
-            cats = _json.loads(text)
+            cats = _json.loads(raw)
         except _json.JSONDecodeError:
-            # Nếu không parse được JSON, thử xử lý string trực tiếp
-            text = text.strip("[]").replace("'", '"')
-            try:
-                cats = _json.loads(f"[{text}]")
-            except:
-                print(f"Không thể parse JSON từ output: {text}")
-                return ["small_talk"]
-        
+            cats = _json.loads(f"[{raw.strip('[]')}]")  # Fallback tối giản
+
+        # (e) Lọc hợp lệ
         if isinstance(cats, list):
-            valid_cats = [c for c in cats if c in CATEGORIES]
-            return valid_cats[:2] if valid_cats else ["small_talk"]
-        return ["small_talk"]
+            valid = [c for c in cats if c in CATEGORIES]
+            return valid[:2] if valid else []
+        return []
+
     except Exception as e:
-        print(f"Lỗi phân loại category: {str(e)}")
-        print(f"LLM raw output: {text}")
-        return ["small_talk"]
+        print("LLM classify error:", e)
+        return []
 
 # Chạy server
 if __name__ == "__main__":

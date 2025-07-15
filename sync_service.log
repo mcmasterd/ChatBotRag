@@ -1,0 +1,10 @@
+2025-07-02 01:30:02,046 - sync_service - INFO - Dịch vụ đồng bộ Google Sheets đã khởi động
+2025-07-02 01:30:02,046 - sync_service - INFO - Bắt đầu đồng bộ dữ liệu lên Google Sheets
+2025-07-02 01:30:02,284 - sync_service - ERROR - Đồng bộ thất bại với mã lỗi 1
+2025-07-02 01:30:02,284 - sync_service - ERROR - Lỗi: Traceback (most recent call last):
+  File "/home/skynet1/ChatBotRag/src/update_google_sheet.py", line 1, in <module>
+    import pandas as pd
+ModuleNotFoundError: No module named 'pandas'
+
+2025-07-02 01:30:02,285 - sync_service - INFO - Đợi 1000 giây trước lần đồng bộ tiếp theo
+2025-07-02 01:30:54,163 - sync_service - INFO - Dịch vụ đồng bộ đã dừng
