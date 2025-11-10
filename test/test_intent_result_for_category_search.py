@@ -64,12 +64,6 @@ def detailed_get_relevant_content_new_flow(query: str, categories: list = None, 
                 
                 print(f"  {i+1:2d}. {match_indicator} {keyword_indicator} [{category}] {doc_id} - {source}")
                 print(f"      📄 {preview}")
-                
-                # Special check for specific content
-                if "10 ngày" in doc:
-                    print(f"      🔥 *** TÌM THẤY '10 NGÀY' TRONG KẾT QUẢ NÀY! ***")
-                if "phản ánh" in doc.lower() and "thắc mắc" in doc.lower():
-                    print(f"      ⭐ *** CHỨA THÔNG TIN VỀ PHẢN ÁNH THẮC MẮC! ***")
                 print()
         
         # Prepare candidates (no additional filtering needed if where clause used)
@@ -331,6 +325,24 @@ def run_test_suite():
     
     return results
 
+def show_classification_result(result):
+    if isinstance(result, dict):
+        print(f"🏷️  Categories: {result.get('categories', [])}")
+        if result.get('rephrased_query'):
+            print(f"🔄 Đã rephrase: {result['rephrased_query']}")
+        else:
+            print(f"ℹ️  Không thực hiện rephrase, dùng câu hỏi gốc.")
+    else:
+        print(f"🏷️  Categories: {result}")
+
+def show_search_results(results, top_n=4):
+    print(f"\n🔍 Kết quả retrieval: {len(results)} documents")
+    for i, item in enumerate(results[:top_n], 1):
+        meta = item['metadata']
+        preview = item['document'][:100].replace('\n', ' ') + "..."
+        print(f"   {i}. [{meta.get('category', 'N/A')}] {meta.get('doc_id', 'N/A')}")
+        print(f"      {preview}")
+
 if __name__ == "__main__":
     print("🤖 === KIỂM TRA NHẬN DIỆN Ý ĐỊNH VÀ TÌM KIẾM (PHIÊN BẢN MỚI) ===")
     print("💡 Hệ thống đã được cập nhật để phù hợp với logic mới của chatbot.py")
@@ -338,61 +350,141 @@ if __name__ == "__main__":
     
     while True:
         print("\n🎛️  MENU CHÍNH:")
-        print("1. Test manual (nhập câu hỏi)")
-        print("2. Test retrieval chi tiết")
-        print("3. Test toàn bộ pipeline") 
-        print("4. Chạy bộ test tổng hợp")
-        print("5. Thoát")
+        print("1. Test intent (intent + rephrase + search)")
+        print("2. Test retrieval chi tiết từng bước (giống chatbot.py)")
+        print("3. Thoát")
         
-        choice = input("\n[-] Chọn option (1-5): ").strip()
+        choice = input("\n[-] Chọn option (1-3): ").strip()
         
         if choice == '1':
             query = input("[-] Nhập câu hỏi: ").strip()
             if not query:
                 continue
-                
-            # Step 1: Classify categories
+            # Step 1: Classify categories + rephrase
             print(f"\n🎯 PHÂN LOẠI CATEGORY")
             print("=" * 30)
-            categories = classify_categories_llm(query)
-            print(f"[Category LLM phân loại]: {categories}")
-            
-            # Step 2: Quick retrieval test
-            results = get_relevant_content(query, categories=categories, final_results=4)
-            print(f"\n🔍 Kết quả retrieval: {len(results)} documents")
-            
-            if results:
-                for i, item in enumerate(results[:2], 1):
-                    meta = item['metadata']
-                    preview = item['document'][:100].replace('\n', ' ') + "..."
-                    print(f"   {i}. [{meta.get('category', 'N/A')}] {meta.get('doc_id', 'N/A')}")
-                    print(f"      {preview}")
+            result = classify_categories_llm(query)
+            show_classification_result(result)
+            categories = result.get('categories', []) if isinstance(result, dict) else result
+            rephrased_query = result.get('rephrased_query') if isinstance(result, dict) else None
+            # Step 2: Search
+            if categories == ['small_talk']:
+                print("💬 Small talk: Bỏ qua vector search, chỉ dùng LLM trả lời.")
+            else:
+                vector_query = rephrased_query if rephrased_query else query
+                results = get_relevant_content(vector_query, categories=categories, final_results=4)
+                show_search_results(results)
         
         elif choice == '2':
             query = input("[-] Nhập câu hỏi để test chi tiết: ").strip()
             if not query:
                 continue
-                
-            categories = classify_categories_llm(query)
-            print(f"[Category LLM phân loại]: {categories}")
-            
-            results = detailed_get_relevant_content_new_flow(query, categories=categories, final_results=4)
+            start = time.time()  # Đo thời gian xử lý toàn bộ bước
+            # Step 1: Lấy lịch sử hội thoại (giả lập, vì test offline)
+            print(f"\n🕑 Lấy lịch sử hội thoại gần nhất (giả lập)")
+            session_history = []  # Có thể mở rộng lấy từ file/log nếu cần
+            print(f"   Lịch sử: {session_history}")
+            # Step 2: Phân loại intent + rephrase
+            print(f"\n🎯 PHÂN LOẠI CATEGORY + REPHRASE")
+            classify_result = classify_categories_llm(query, history=session_history)
+            show_classification_result(classify_result)
+            categories = classify_result.get('categories', []) if isinstance(classify_result, dict) else classify_result
+            rephrased_query = classify_result.get('rephrased_query') if isinstance(classify_result, dict) else None
+            # Step 3: Chuẩn bị query cho search
+            if categories == ['small_talk']:
+                print("💬 Small talk: Bỏ qua vector search, chỉ dùng LLM trả lời.")
+                continue
+            if not categories:
+                print("⚠️  Không xác định được category, sẽ search toàn bộ database.")
+            vector_query = rephrased_query if rephrased_query else query
+            print(f"\n🔎 Query dùng cho vector search: {vector_query}")
+            # Step 4: Semantic search (ChromaDB)
+            print(f"\n🔍 BƯỚC 1: Semantic search (ChromaDB)")
+            initial_results = 20 if categories else 10
+            if categories:
+                where_clause = {"category": {"$in": categories}}
+                print(f"   📊 Sử dụng where clause: {where_clause}")
+                results = collection.query(query_texts=[vector_query], n_results=initial_results, where=where_clause, include=["metadatas", "documents"])
+            else:
+                results = collection.query(query_texts=[vector_query], n_results=initial_results, include=["metadatas", "documents"])
+            print(f"   ✅ Tìm thấy {len(results['documents'][0]) if results['documents'] else 0} kết quả từ ChromaDB")
+            # Step 5: Hiển thị chi tiết kết quả semantic search
+            if results['documents'] and results['documents'][0]:
+                print(f"\n📋 Kết quả semantic search:")
+                for i, (doc, meta) in enumerate(zip(results['documents'][0], results['metadatas'][0])):
+                    category = meta.get('category', 'N/A')
+                    doc_id = meta.get('doc_id', 'N/A')
+                    source = meta.get('source', 'N/A')
+                    preview = doc[:150].replace('\n', ' ') + "..." if len(doc) > 150 else doc
+                    match_indicator = "✅" if not categories or category in categories else "❌"
+                    print(f"  {i+1:2d}. {match_indicator} [{category}] {doc_id} - {source}")
+                    print(f"      📄 {preview}\n")
+            # Step 6: Chuẩn bị candidates
+            candidate_content = []
+            if results['metadatas'] and results['metadatas'][0]:
+                for i, metadata in enumerate(results['metadatas'][0]):
+                    document_text = results['documents'][0][i]
+                    candidate_content.append({
+                        'document': document_text,
+                        'metadata': metadata,
+                        'relevance_score': 0.0,
+                        'original_rank': i + 1
+                    })
+            print(f"   ✅ Candidates cho BM25 reranking: {len(candidate_content)}")
+            # Step 7: BM25 rerank
+            if candidate_content:
+                print(f"\n🔄 BƯỚC 2: BM25 Reranking")
+                documents = [item['document'] for item in candidate_content]
+                bm25 = BM25(documents)
+                bm25_scores = bm25.get_scores(vector_query)
+                for i, score in enumerate(bm25_scores):
+                    candidate_content[i]['relevance_score'] = score
+                candidate_content.sort(key=lambda x: x.get('relevance_score', 0), reverse=True)
+                print(f"\n🏆 Thứ tự sau khi BM25 rerank:")
+                # Tính độ khớp với query để đánh dấu 🔥
+                def is_relevant(doc, query):
+                    query_words = set(query.lower().split())
+                    doc_words = set(doc.lower().split())
+                    # Đánh dấu 🔥 nếu có ít nhất 2 từ chung hoặc query là substring của doc
+                    return len(query_words & doc_words) >= 2 or query.lower() in doc.lower()
+                for i, item in enumerate(candidate_content):
+                    meta = item['metadata']
+                    original_rank = item['original_rank']
+                    score = item['relevance_score']
+                    doc_id = meta.get('doc_id', 'N/A')
+                    source = meta.get('source', 'N/A')
+                    rank_change = ""
+                    if i + 1 < original_rank:
+                        rank_change = f"📈 (tăng {original_rank - (i + 1)} bậc)"
+                    elif i + 1 > original_rank:
+                        rank_change = f"📉 (giảm {(i + 1) - original_rank} bậc)"
+                    else:
+                        rank_change = "➡️ (giữ nguyên)"
+                    fire_flag = "🔥" if is_relevant(item['document'], vector_query) else "  "
+                    print(f"   {i+1}. Score: {score:.4f} {fire_flag} | [{meta.get('category', 'N/A')}] {doc_id} - {source} {rank_change}")
+                    # preview = item['document'][:100].replace('\n', ' ') + "..."
+                    # print(f"      {preview}\n")
+                print(f"\n🎯 BƯỚC 3: Kết quả cuối cùng (top 4)")
+                print("-" * 50)
+                for i, item in enumerate(candidate_content[:4]):
+                    meta = item['metadata']
+                    score = item['relevance_score']
+                    doc_id = meta.get('doc_id', 'N/A')
+                    source = meta.get('source', 'N/A')
+                    preview = item['document'][:250].replace('\n', ' ') + "..." if len(item['document']) > 250 else item['document']
+                    print(f"🥇 Kết quả {i+1}:")
+                    print(f"   📊 BM25 Score: {score:.4f}")
+                    print(f"   📁 Doc ID: {doc_id}")
+                    print(f"   📄 Source: {source}")
+                    print(f"   📝 Nội dung: {preview}\n")
+                print(f"⏱️  Thời gian xử lý: {time.time() - start:.4f}s")
+                print(f"📈 Tổng kết: {len(results['documents'][0]) if results['documents'] else 0} candidates → {len(candidate_content[:4])} final results")
+            else:
+                print("❌ Không có kết quả nào")
         
         elif choice == '3':
-            query = input("[-] Nhập câu hỏi để test toàn bộ pipeline: ").strip()
-            if not query:
-                continue
-                
-            test_full_pipeline(query)
-        
-        elif choice == '4':
-            run_test_suite()
-        
-        elif choice == '5':
             print("👋 Tạm biệt!")
             break
-        
         else:
             print("❌ Lựa chọn không hợp lệ!")
-        
         print("\n" + "="*80)

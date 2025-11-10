@@ -18,6 +18,7 @@ import requests
 import csv
 import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import tiktoken
 
 # Load environment variables and initialize clients
 load_dotenv()
@@ -31,6 +32,7 @@ Path(LOGS_DIR).mkdir(exist_ok=True)
 
 # Tệp log cho câu hỏi và câu trả lời
 QA_LOG_FILE = os.path.join(LOGS_DIR, "qa_log.csv")
+TOKEN_LOG_FILE = os.path.join(LOGS_DIR, "token_usage_log.csv")
 
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 chroma_client = chromadb.PersistentClient(path=CHROMA_PATH)
@@ -42,6 +44,7 @@ class LocalEmbeddingFunction:
         self.timeout = timeout
         
     def __call__(self, input: List[str]) -> List[List[float]]:
+        start_time = time.time()
         try:
             response = requests.post(
                 "http://192.168.1.131:8000/embed", 
@@ -50,6 +53,19 @@ class LocalEmbeddingFunction:
             )
             response.raise_for_status()
             result = response.json()
+            
+            # Log embedding usage
+            processing_time = time.time() - start_time
+            input_text = " | ".join(input)
+            log_token_usage(
+                user_id="system",
+                operation_type="embedding_generation",
+                model="local_embedding",
+                input_text=input_text,
+                output_text=f"Generated {len(input)} embeddings",
+                processing_time=processing_time,
+                additional_info=f"texts_count={len(input)}, avg_length={sum(len(t) for t in input)/len(input):.1f}"
+            )
             
             # Kiểm tra định dạng đặc biệt: API có thể trả về dạng phẳng (768 số)
             # thay vì dạng mảng 2 chiều (mảng của các mảng 768 phần tử)
@@ -95,6 +111,101 @@ embedding_function = LocalEmbeddingFunction()
 
 # Khởi tạo collection duy nhất sau khi đã có embedding_function
 collection = chroma_client.get_collection(name="all_documents", embedding_function=embedding_function)
+
+# Token logging setup
+TOKEN_PRICING = {
+    "gpt-4o": {"input": 0.0025 / 1000, "output": 0.01 / 1000},
+    "gpt-4o-mini": {"input": 0.00015 / 1000, "output": 0.0006 / 1000},
+    "embedding": {"input": 0.0001 / 1000, "output": 0}  # Local embedding free
+}
+
+def init_token_log_file():
+    """Khởi tạo file log token usage"""
+    try:
+        if not os.path.exists(TOKEN_LOG_FILE):
+            with open(TOKEN_LOG_FILE, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerow([
+                    'Timestamp',
+                    'User_ID',
+                    'Operation_Type',
+                    'Model',
+                    'Input_Tokens',
+                    'Output_Tokens',
+                    'Total_Tokens',
+                    'Input_Text_Preview',
+                    'Output_Text_Preview',
+                    'Cost_USD',
+                    'Processing_Time_Seconds',
+                    'Additional_Info'
+                ])
+    except Exception as e:
+        print(f"Error initializing token log file: {e}")
+
+def count_tokens(text: str, model: str = "gpt-4o-mini") -> int:
+    """Count tokens in text using tiktoken"""
+    try:
+        if model.startswith("gpt-4"):
+            encoding = tiktoken.encoding_for_model("gpt-4")
+        else:
+            encoding = tiktoken.get_encoding("cl100k_base")
+        return len(encoding.encode(str(text)))
+    except Exception as e:
+        print(f"Token counting error: {e}")
+        # Fallback estimation
+        return int(len(str(text).split()) * 1.3)
+
+def log_token_usage(
+    user_id: str,
+    operation_type: str,
+    model: str,
+    input_text: str,
+    output_text: str = "",
+    processing_time: float = 0.0,
+    additional_info: str = ""
+):
+    """Log detailed token usage"""
+    try:
+        input_tokens = count_tokens(input_text, model)
+        output_tokens = count_tokens(output_text, model) if output_text else 0
+        total_tokens = input_tokens + output_tokens
+        
+        # Calculate cost
+        pricing = TOKEN_PRICING.get(model, {"input": 0, "output": 0})
+        cost = (input_tokens * pricing["input"]) + (output_tokens * pricing["output"])
+        
+        # Create previews (first 100 chars)
+        input_preview = str(input_text)[:100].replace('\n', ' ').replace(',', ';')
+        output_preview = str(output_text)[:100].replace('\n', ' ').replace(',', ';')
+        
+        timestamp = datetime.datetime.now(ZoneInfo("Asia/Ho_Chi_Minh")).strftime("%d-%m-%Y %H:%M:%S")
+        
+        row = [
+            timestamp,
+            user_id or "system",
+            operation_type,
+            model,
+            input_tokens,
+            output_tokens,
+            total_tokens,
+            input_preview,
+            output_preview,
+            f"{cost:.6f}",
+            f"{processing_time:.3f}",
+            additional_info
+        ]
+        
+        with open(TOKEN_LOG_FILE, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow(row)
+            
+        print(f"Token log: {operation_type} | {model} | {input_tokens}+{output_tokens}={total_tokens} tokens | ${cost:.6f}")
+        
+    except Exception as e:
+        print(f"Error logging tokens: {e}")
+
+# Khởi tạo token log
+init_token_log_file()
 
 # Simplified response cache with size limit
 _response_cache = {}
@@ -235,7 +346,7 @@ def update_rating(user_id, question, answer, rating, comment=None):
         traceback.print_exc()
         return False
 
-def get_relevant_content(query: str, categories: List[str] = None, final_results: int = 4) -> List[Dict]:
+def get_relevant_content(query: str, categories: List[str] = None, final_results: int = 3) -> List[Dict]:
     """Get relevant content with category filtering FIRST"""
     start = time.time()
     try:
@@ -256,7 +367,7 @@ def get_relevant_content(query: str, categories: List[str] = None, final_results
             )
         else:
             # Không có category filter, search toàn bộ
-            initial_results = 10
+            initial_results = 20
             results = collection.query(
                 query_texts=[query],
                 n_results=initial_results,
@@ -310,66 +421,90 @@ def create_prompt(query: str, content: List[Dict]) -> str:
         # Build source information from markdown metadata
         source_parts = []
         if metadata.get('source'):
-            source_parts.append(metadata['source'])
-        if metadata.get('doc_id'):
-            source_parts.append(metadata['doc_id'])
-        
-            
-        source_info = " tài liệu số ".join(source_parts)
-        if source_info:
-            context_str += f"\nNguồn: {source_info}"
+            context_str += f"\n[{metadata['source']}]"
         
         context_items.append(context_str)
     
     if not context_items:
         context_items = ["Không có thông tin phù hợp."]
     
-    combined_context = "\n\n---\n\n".join(context_items)
-    prompt = """Trả lời câu hỏi dựa trên thông tin sau:
-    {0}
-    CÂU HỎI: {1}
-    TRẢ LỜI:""".format(combined_context, query)
+    combined_context = "\n\n".join(context_items)  # Bỏ separator "---"
+    prompt = f"Thông tin:\n{combined_context}\n\nCâu hỏi: {query}\nTrả lời:"
     
     return prompt
 
-def get_llm_response(prompt: str, stream: bool = False) -> str | Generator:
+system_msg = """
+    Bạn là trợ lý tư vấn thông tin của trường ICTU.
+    Hãy chuyển toàn bộ ký tự đặc biệt/markdown về văn bản thuần.    
+    Chỉ sử dụng thông tin đã được cung cấp để trả lời, không suy đoán không căn cứ.
+    Nếu không có đủ thông tin, hãy thừa nhận một cách lịch sự và đề nghị người dùng hỏi lại.
+    Nếu có thông tin mâu thuẫn, ưu tiên nguồn mới nhất.
+    Trả lời chắc chắn, trọng tâm, đầy đủ, câu hỏi với giọng điệu thân thiện và gần gũi.
+    Không dài dòng, nhưng  nếu người dùng yêu cầu có thể cung cấp thêm chi tiết.
+"""
+
+def get_llm_response(prompt: str, stream: bool = False, user_id: str = None, 
+                    operation_type: str = "llm_response") -> str | Generator:
     """Get response from language model with optional streaming support"""
     start = time.time()
     
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": 
-             "Bạn là trợ lý tư vấn thông tin chuyên nghiệp của trường ICTU."
-             "Không dùng các ký hiệu (#, *, **, _) trong phản hồi." 
-             "Chỉ sử dụng thông tin đã được cung cấp để trả lời."
-             "Nếu không có đủ thông tin, hãy thừa nhận một cách lịch sự và đề nghị người dùng hỏi lại."
-             "Nếu có thông tin mâu thuẫn, ưu tiên nguồn mới nhất."
-             "Chú ý trả lời câu hỏi người dùng cho phù hợp với mạch hội thoại"
-             "Trả lời đúng đầy đủ, trọng tâm câu hỏi với giọng điệu thân thiện và gần gũi."
-             "Sử dụng định dạng dễ đọc, có thể trình bày dưới dạng danh sách nếu phù hợp."
-             "Hãy ngắn gọn và chính xác, nhưng có thể cung cấp thêm chi tiết nếu người dùng yêu cầu."
-             "Sử dụng ngôn ngữ gần gũi, phù hợp với văn hóa Việt Nam."
-            },
+            {"role": "system", "content": system_msg},
             {"role": "user", "content": prompt}
         ],
         temperature=0.5,
-        max_tokens=600,
+        max_tokens=400,  # Giảm từ 600 xuống 400
         presence_penalty=0.3,
         stream=stream
     )
     
     if not stream:
-        print(f"LLM response time: {time.time() - start:.4f}s")
-        return response.choices[0].message.content
+        processing_time = time.time() - start
+        content = response.choices[0].message.content
+        
+        # Log token usage for non-streaming
+        if hasattr(response, 'usage') and response.usage:
+            log_token_usage(
+                user_id=user_id or "system",
+                operation_type=operation_type,
+                model="gpt-4o-mini",
+                input_text=f"System: {system_msg[:50]}...\nUser: {prompt}",
+                output_text=content,
+                processing_time=processing_time,
+                additional_info=f"prompt_tokens={response.usage.prompt_tokens}, completion_tokens={response.usage.completion_tokens}"
+            )
+        
+        print(f"LLM response time: {processing_time:.4f}s")
+        return content
     
     def generate():
         full_response = ""
+        total_tokens_estimate = 0
+        
         for chunk in response:
             if chunk.choices[0].delta.content:
                 content = chunk.choices[0].delta.content
                 full_response += content
                 yield f"data: {json.dumps({'content': content})}\n\n"
+            
+            # Lấy usage từ chunk cuối cùng nếu có
+            if hasattr(chunk, 'usage') and chunk.usage:
+                total_tokens_estimate = chunk.usage.total_tokens
+        
+        # Log token usage cho streaming sau khi hoàn thành
+        processing_time = time.time() - start
+        log_token_usage(
+            user_id=user_id or "system",
+            operation_type=f"{operation_type}_streaming",
+            model="gpt-4o-mini",
+            input_text=f"System: {system_msg[:50]}...\nUser: {prompt}",
+            output_text=full_response,
+            processing_time=processing_time,
+            additional_info=f"estimated_total_tokens={total_tokens_estimate}, response_length={len(full_response)}"
+        )
+        
         yield f"event: done\ndata: {json.dumps({'full_response': full_response})}\n\n"
         return full_response
     
@@ -416,7 +551,7 @@ def set_cached_response(query: str, response: str):
 
 # Sửa process_user_query để dùng LLM phân loại collection
 
-def process_user_query(query: str, user_id: str, categories: List[str] = None) -> str:
+def process_user_query(query: str, user_id: str, categories: List[str] = None, rephrased_query: str = None) -> str:
     try:
         start = time.time()
         normalized_query = normalize_query(query)
@@ -426,6 +561,18 @@ def process_user_query(query: str, user_id: str, categories: List[str] = None) -
         if cached_response:
             processing_time = time.time() - start
             log_qa(user_id, query, cached_response, processing_time)
+            
+            # Log cache hit
+            log_token_usage(
+                user_id=user_id,
+                operation_type="cache_hit",
+                model="cache",
+                input_text=query,
+                output_text=cached_response,
+                processing_time=processing_time,
+                additional_info="Retrieved from cache"
+            )
+            
             print(f"Response time: {processing_time:.2f}s")
             return cached_response
 
@@ -442,7 +589,7 @@ def process_user_query(query: str, user_id: str, categories: List[str] = None) -
             context = "\n".join([f"Q: {item['question']}\nA: {item['answer']}" for item in session_data]) if session_data else ""
             base_prompt = f"Lịch sử trò chuyện:\n{context}\n\nCÂU HỎI: {query}\nTRẢ LỜI:" if context else f"CÂU HỎI: {query}\nTRẢ LỜI:"
             
-            response = get_llm_response(base_prompt)
+            response = get_llm_response(base_prompt, user_id=user_id, operation_type="small_talk_response")
 
             session_data.append({"question": query, "answer": response})
             redis_client.setex(session_key, 900, json.dumps(session_data))
@@ -462,8 +609,41 @@ def process_user_query(query: str, user_id: str, categories: List[str] = None) -
             session_data = []
         context = "\n".join([f"Q: {item['question']}\nA: {item['answer']}" for item in session_data]) if session_data else ""
         
+        # Log session history tokens
+        if context:
+            log_token_usage(
+                user_id=user_id,
+                operation_type="session_history",
+                model="gpt-4o-mini",
+                input_text=context,
+                output_text="",
+                processing_time=0,
+                additional_info=f"history_items={len(session_data)}"
+            )
+        
+        # Sử dụng rephrased_query nếu có, không thì dùng query gốc
+        vector_query = rephrased_query if rephrased_query else query
+        if rephrased_query:
+            print(f"Using rephrased query for vector search: '{rephrased_query}' (original: '{query}')")
+        
         # Truy vấn collection duy nhất, lọc theo nhiều category nếu có
-        relevant_content = get_relevant_content(query, categories=categories, final_results=4)
+        vector_start = time.time()
+        relevant_content = get_relevant_content(vector_query, categories=categories, final_results=3)  # Giảm từ 5 xuống 3
+        vector_time = time.time() - vector_start
+        
+        # Log vector search results
+        if relevant_content:
+            context_text = "\n---\n".join([item.get('document', '')[:200] + "..." for item in relevant_content])
+            log_token_usage(
+                user_id=user_id,
+                operation_type="vector_search_results",
+                model="retrieval",
+                input_text=vector_query,
+                output_text=context_text,
+                processing_time=vector_time,
+                additional_info=f"results_count={len(relevant_content)}, categories={categories}"
+            )
+        
         sources = []
         for item in relevant_content:
             metadata = item.get('metadata', {})
@@ -473,9 +653,22 @@ def process_user_query(query: str, user_id: str, categories: List[str] = None) -
                 sources.append(metadata['doc_id'])
         sources_str = ", ".join(set(sources))
         print(f"Sources: {sources_str}")
+        
         base_prompt = create_prompt(query, relevant_content)
         prompt_with_context = f"Lịch sử trò chuyện:\n{context}\n\n{base_prompt}" if context else base_prompt
-        response = get_llm_response(prompt_with_context)
+        
+        # Log final prompt
+        log_token_usage(
+            user_id=user_id,
+            operation_type="final_prompt",
+            model="gpt-4o-mini",
+            input_text=prompt_with_context,
+            output_text="",
+            processing_time=0,
+            additional_info=f"sources={sources_str}"
+        )
+        
+        response = get_llm_response(prompt_with_context, user_id=user_id, operation_type="main_response")
         session_data.append({"question": query, "answer": response})
         redis_client.setex(session_key, 900, json.dumps(session_data))
         set_cached_response(query, response)
@@ -531,6 +724,129 @@ class BM25:
                 scores[i] += numerator / denominator
         return scores
 
+CATEGORIES = [
+    "student_affairs",                  # Công tác sinh viên, quyền, nghĩa vụ, hồ sơ/thẻ, ngoại khóa, nội trú, rèn luyện, đời sống
+    "training_and_regulations",         # Chương trình đào tạo, quy chế đào tạo, quản lý học vụ, văn bằng, chứng chỉ
+    "tuition_and_support",              # Học phí, miễn giảm, hỗ trợ tài chính, phí dịch vụ
+    "scholarship",                      # Học bổng, xét duyệt, điều kiện học bổng
+    "ictu_slogan",                      # Tầm nhìn, sứ mệnh, giá trị cốt lõi, triết lý giáo dục của ICTU
+    "information_security_and_conduct", # An ninh mạng, quy tắc ứng xử, bảo mật, đạo đức số
+    "small_talk"                        # Chào hỏi, xã giao, các câu không liên quan trường
+]
+
+CATEGORY_DESCRIPTIONS = {
+    "student_affairs": (
+        "TẤT CẢ các vấn đề về quản lý sinh viên/người học, lưu học sinh: quyền, nghĩa vụ, nhiệm vụ, hồ sơ, thẻ sinh viên, nội trú, ngoại trú, các vấn đề về hoạt động, điểm ngoại khóa, khen thưởng, kỷ luật, tổ chức lớp, đoàn hội, đời sống, sức khỏe, tư vấn, các chính sách liên quan sinh viên và cán bộ/giảng viên trong nhà trường.\n"
+        "Bao gồm cả quy định về đánh giá rèn luyện, hồ sơ cá nhân, thẻ SV, nội trú, quản lý hồ sơ – thủ tục của người học, quy tắc ứng xử, đạo đức, thái độ, tác phong, ứng xử của cán bộ, giảng viên, sinh viên trong nhà trường.\n"
+    ),
+    "training_and_regulations": (
+        "TẤT CẢ các vấn đề về chương trình đào tạo, quy chế – quy định học vụ, tín chỉ, tổ chức đào tạo, nội quy giảng đường, quản lý học phần, đăng ký học, xét tốt nghiệp, quản lý/ cấp phát văn bằng, chứng chỉ, phân loại văn bằng, hệ thống văn bằng quốc gia, sửa đổi văn bằng, chuyển trường, ngành, quy định về hành vi, trang phục, thái độ học tập, vi phạm quy chế học tập, xử lý vi phạm trên lớp, kỷ luật lớp học."
+        "Bao gồm cả các câu hỏi về khái niệm, định nghĩa, giải thích về hệ thống văn bằng, các loại văn bằng, chuẩn văn bằng, quy định hệ văn bằng quốc gia."
+    ),
+    "tuition_and_support": (
+        "Câu hỏi về học phí, các khoản thu, miễn giảm, hỗ trợ tài chính, các dịch vụ hỗ trợ tài chính cho sinh viên."
+    ),
+    "scholarship": (
+        "Mọi vấn đề về học bổng: điều kiện, xét duyệt, quy trình, mức học bổng, chế độ học bổng, các loại học bổng trong trường. Nếu câu hỏi về nghĩa vụ, chính sách, phân công sau học bổng thì chọn student_affairs."
+    ),
+    "ictu_slogan": (
+        "Chỉ bao gồm các nội dung về TẦM NHÌN, SỨ MỆNH, GIÁ TRỊ CỐT LÕI, TRIẾT LÝ GIÁO DỤC của ICTU. Không chọn nếu hỏi về môi trường, quyền nghĩa vụ, hay thông tin ngoài slogan."
+    ),
+    "information_security_and_conduct": (
+        "Quy định về an ninh mạng, bảo mật dữ liệu cá nhân, luật, quy tắc ứng xử trong môi trường số, quy tắc ứng xử trên mạng xã hội, đạo đức công nghệ thông tin, phòng chống vi phạm pháp luật trên mạng, các khái niệm, định nghĩa, giải thích về không gian, an ninh mạng, hệ thống thông tin trọng yếu quốc gia."
+    ),
+    "small_talk": (
+        "Chào hỏi, xã giao, cảm ơn, xin lỗi, hỏi bot là ai, hỏi thời tiết, các câu hỏi KHÔNG liên quan đến thông tin/quy định trường ICTU."
+    )
+}
+
+# Hàm phân loại
+def classify_categories_llm(query: str, history: list = None, user_id: str = None) -> dict:
+    """
+    Phân loại category và rephrase câu hỏi nếu cần
+    Luôn trả về dict: {"categories": [...], "rephrased_query": "..." hoặc None}
+    """
+    start_time = time.time()
+    system_prompt = (
+        "Bạn là hệ thống phân loại câu hỏi vào đúng category của trường ICTU. "
+        "Chỉ rephrase nếu câu hỏi có đại từ hoặc phụ thuộc vào hội thoại trước, còn lại chỉ phân loại. "
+        "Luôn trả về JSON: {categories: [...], rephrased_query: ...}. Nếu không cần rephrase, rephrased_query là null."
+        "\nMô tả category:\n" + "\n".join(f"- {c}: {CATEGORY_DESCRIPTIONS[c][:80]}" for c in CATEGORIES)  # rút gọn mô tả
+    )
+    cat_list = ", ".join(CATEGORIES)
+    # Tạo phần lịch sử hội thoại nếu có
+    history_str = ""
+    if history:
+        for item in history[-1:]:
+            history_str += f"Q: {item.get('question','')}\nA: {item.get('answer','')}\n"
+    user_prompt = (
+        f"Các category hợp lệ: {cat_list}\n"
+        f"Lịch sử hội thoại gần nhất:\n{history_str}"
+        f"Câu hỏi hiện tại: {query}\n"
+        "Trả về JSON: {\"categories\": [...], \"rephrased_query\": ...}. Nếu không cần rephrase, rephrased_query là null."
+    )
+    
+    try:
+        resp = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.3,
+            max_tokens=200
+        )
+        
+        processing_time = time.time() - start_time
+        raw = resp.choices[0].message.content
+        
+        # Log classification tokens
+        if hasattr(resp, 'usage') and resp.usage:
+            log_token_usage(
+                user_id=user_id or "system",
+                operation_type="category_classification",
+                model="gpt-4o",
+                input_text=f"System: {system_prompt[:100]}...\nUser: {user_prompt}",
+                output_text=raw,
+                processing_time=processing_time,
+                additional_info=f"prompt_tokens={resp.usage.prompt_tokens}, completion_tokens={resp.usage.completion_tokens}"
+            )
+        
+        raw = raw.replace("```json", "").replace("```", "").strip()
+        
+        import json as _json
+        try:
+            result = _json.loads(raw)
+        except _json.JSONDecodeError:
+            # Fallback: trả về cấu trúc mặc định
+            print(f"JSON decode error, raw response: {raw}")
+            result = {"categories": [], "rephrased_query": None}
+        
+        # Đảm bảo kết quả có cấu trúc đúng
+        if not isinstance(result, dict):
+            result = {"categories": [], "rephrased_query": None}
+        
+        # Lọc categories hợp lệ
+        cats = result.get("categories", [])
+        if isinstance(cats, list):
+            valid = [c for c in cats if c in CATEGORIES]
+            result["categories"] = valid[:2] if valid else []
+        else:
+            result["categories"] = []
+        
+        # Xử lý rephrased_query
+        rephrased = result.get("rephrased_query")
+        if rephrased and isinstance(rephrased, str) and rephrased.strip():
+            result["rephrased_query"] = rephrased.strip()
+        else:
+            result["rephrased_query"] = None
+            
+        return result
+        
+    except Exception as e:
+        print(f"LLM classify error: {e}")
+        return {"categories": [], "rephrased_query": None}
+
 # Khởi tạo Flask app
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -557,15 +873,11 @@ def ask():
     categories = data.get('category', None) if request.method == 'POST' else None
     if isinstance(categories, str):
         categories = [categories]
-    # Nếu không có category từ client, tự động phân loại bằng LLM
-    if not categories:
-        categories = classify_categories_llm(query)
-        print(f"LLM classified categories: {categories}")
     if not query or not user_id:
         print('Error: Missing query or user_id', {'query': query, 'user_id': user_id})
         return jsonify({'error': 'No query or user_id provided'}), 400
 
-    # Kiểm tra cache nếu không phải streaming
+    # ĐƯA BƯỚC KIỂM TRA CACHE LÊN TRƯỚC PHÂN LOẠI CATEGORY
     if not stream:
         cached_response = get_cached_response(query)
         if cached_response:
@@ -581,6 +893,37 @@ def ask():
             redis_client.setex(session_key, 1800, json.dumps(session_data))
             print('Response from cache:', cached_response)
             return jsonify({'response': cached_response})
+
+    # Nếu không có category từ client, tự động phân loại bằng LLM
+    if not categories:
+        # Lấy lịch sử hội thoại gần nhất
+        session_key = f"session_history:{user_id}"
+        session_data = redis_client.get(session_key)
+        if session_data:
+            session_data = json.loads(session_data)
+        else:
+            session_data = []
+        
+        try:
+            classify_result = classify_categories_llm(query, history=session_data, user_id=user_id)
+            # Đảm bảo kết quả luôn là dict với cấu trúc đúng
+            if isinstance(classify_result, dict):
+                categories = classify_result.get("categories", [])
+                rephrased_query = classify_result.get("rephrased_query")
+            else:
+                # Fallback nếu kết quả không đúng định dạng
+                categories = classify_result if isinstance(classify_result, list) else []
+                rephrased_query = None
+            print(f"LLM classified categories: {categories}, rephrased_query: {rephrased_query}")
+        except Exception as e:
+            print(f"Error in category classification: {e}")
+            categories = []
+            rephrased_query = None
+    else:
+        rephrased_query = None
+    if not query or not user_id:
+        print('Error: Missing query or user_id', {'query': query, 'user_id': user_id})
+        return jsonify({'error': 'No query or user_id provided'}), 400
 
     # Xử lý truy vấn với categories
     if stream:
@@ -609,7 +952,7 @@ def ask():
                     base_prompt = f"Lịch sử trò chuyện:\n{context}\n\nCÂU HỎI: {query}\nTRẢ LỜI:" if context else f"CÂU HỎI: {query}\nTRẢ LỜI:"
                     
                     full_response = ""
-                    for chunk in get_llm_response(base_prompt, stream=True):
+                    for chunk in get_llm_response(base_prompt, stream=True, user_id=user_id, operation_type="small_talk_streaming"):
                         if chunk.startswith("data: "):
                             data = json.loads(chunk[6:])
                             if "content" in data:
@@ -635,8 +978,13 @@ def ask():
                     session_data = []
                 context = "\n".join([f"Q: {item['question']}\nA: {item['answer']}" for item in session_data]) if session_data else ""
                 
+                # Sử dụng rephrased_query nếu có, không thì dùng query gốc
+                vector_query = rephrased_query if rephrased_query else query
+                if rephrased_query:
+                    print(f"Using rephrased query for vector search: '{rephrased_query}' (original: '{query}')")
+                
                 # Truy vấn collection duy nhất, lọc theo nhiều category nếu có
-                relevant_content = get_relevant_content(query, categories=categories, final_results=4)
+                relevant_content = get_relevant_content(vector_query, categories=categories, final_results=5)
                 sources = []
                 for item in relevant_content:
                     metadata = item.get('metadata', {})
@@ -651,7 +999,7 @@ def ask():
                 prompt_with_context = f"Lịch sử trò chuyện:\n{context}\n\n{base_prompt}" if context else base_prompt
                 
                 full_response = ""
-                for chunk in get_llm_response(prompt_with_context, stream=True):
+                for chunk in get_llm_response(prompt_with_context, stream=True, user_id=user_id, operation_type="main_streaming"):
                     if chunk.startswith("data: "):
                         data = json.loads(chunk[6:])
                         if "content" in data:
@@ -685,7 +1033,7 @@ def ask():
             }
         )
     else:
-        response = process_user_query(query, user_id, categories=categories)
+        response = process_user_query(query, user_id, categories=categories, rephrased_query=rephrased_query)
         print('Response from process_user_query:', response)
         session_key = f"session_history:{user_id}"
         session_data = redis_client.get(session_key)
@@ -830,88 +1178,6 @@ def rate_response():
     except Exception as e:
         print(f"Error in /rate_response: {str(e)}")
         return jsonify({'error': str(e)}), 500
-
-CATEGORIES = [
-    "scholarship",
-    "ictu_slogan",
-    "training_and_regulations",
-    "tuition_and_support",
-    "student_affairs",
-    "small_talk"
-]
-
-CATEGORY_DESCRIPTIONS = {
-    "scholarship": (
-        "Câu hỏi về học bổng, điều kiện, quy trình, mức học bổng, xét duyệt học bổng."
-    ),
-    "ictu_slogan": (
-        "Chỉ bao gồm TẦM NHÌN, SỨ MỆNH, GIÁ TRỊ CỐT LÕI, TRIẾT LÝ GIÁO DỤC của ICTU. "
-        "Không bao gồm quyền, nghĩa vụ, môi trường học tập hay đời sống sinh viên."
-    ),
-    "training_and_regulations": (
-        "Chương trình đào tạo, chương trình học, đăng ký học phần, tín chỉ, quy chế – quy định học vụ."
-    ),
-    "tuition_and_support": (
-        "Học phí, các khoản thu, miễn giảm, hỗ trợ tài chính."
-    ),
-    "student_affairs": (
-        "Quản lý, sinh viên, hồ sơ, thẻ SV, nội trú, ĐỜI SỐNG sinh viên,  "
-        "QUYỀN & NGHĨA VỤ & NHIỆM VỤ người học, môi trường học tập an toàn, hoạt động ngoại khóa."
-        "Công tác, quản lý sinh viên, đoàn hội, giáo dục, khen thưởng, kỷ luật"
-    ),
-    "small_talk": (
-        "Chào hỏi, xã giao, cảm ơn, xin lỗi, hỏi bot là ai, hỏi thời tiết… "
-        "Các câu hỏi KHÔNG liên quan tới thông tin trường ICTU."
-    )
-}
-
-# Hàm phân loại
-def classify_categories_llm(query: str) -> List[str]:
-    system_prompt = (
-        "Bạn là hệ thống phân loại câu hỏi vào đúng category.\n"
-        "Mô tả category:\n" +
-        "\n".join(f"- {c}: {CATEGORY_DESCRIPTIONS[c]}" for c in CATEGORIES) +
-        "\nChỉ chọn category khi câu hỏi phù hợp nhất với mô tả; nếu quá mơ hồ, trả về []."
-    )
-
-    cat_list = "\n".join(f"- {c}" for c in CATEGORIES)
-    user_prompt = (
-        f"Danh sách category hợp lệ:\n{cat_list}\n"
-        "Trả về JSON array, tối đa 2 phần tử, ví dụ: [\"scholarship\"].\n"
-        "Nếu câu hỏi là small talk (chào hỏi, xã giao…), trả về [\"small_talk\"].\n"
-        "Nếu KHÔNG chắc chắn, trả về [].\n"
-        f"CÂU HỎI: {query}"
-    )
-
-    try:
-        resp = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.0,
-            max_tokens=120
-        )
-        raw = resp.choices[0].message.content
-
-        # Làm sạch & parse JSON
-        raw = raw.replace("```json", "").replace("```", "").strip()
-        import json as _json
-        try:
-            cats = _json.loads(raw)
-        except _json.JSONDecodeError:
-            cats = _json.loads(f"[{raw.strip('[]')}]")  # Fallback tối giản
-
-        # (e) Lọc hợp lệ
-        if isinstance(cats, list):
-            valid = [c for c in cats if c in CATEGORIES]
-            return valid[:2] if valid else []
-        return []
-
-    except Exception as e:
-        print("LLM classify error:", e)
-        return []
 
 # Chạy server
 if __name__ == "__main__":
